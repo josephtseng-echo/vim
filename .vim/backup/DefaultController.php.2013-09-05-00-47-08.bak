@@ -1,0 +1,14 @@
+<?php
+namespace Josephzeng\Bundles\GuijiaBundle\Controller;
+
+use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Component\HttpFoundation\Response;
+
+class DefaultController extends Controller
+{
+	public function indexAction(){
+    $response = new Response("sdfsdf", 200);
+		$response->setCharset('UTF-8');
+		return $response;
+    }
+}

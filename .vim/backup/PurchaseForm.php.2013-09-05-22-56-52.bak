@@ -1,0 +1,204 @@
+<?php
+
+namespace Oil\Form;
+
+use St\Api;
+
+class PurchaseForm extends \St\Form\Form
+{
+	/**
+     * Form basic elements
+     *
+     * @var array
+     */
+	protected $mergeElements = array( 
+		'id' => array( 
+			'name' => 'id', 
+			'type' => 'hidden', 
+			'options' => array( 
+				'label' => 'Id' 
+			), 
+			'attributes' => array( 
+				'value' => '' 
+			) 
+		), 
+		'station_no' => array(
+				'name' => 'station_no',
+				'type' => 'hidden'	
+		),
+		'name' => array( 
+				'name' => 'oil',
+				'type' => 'select',
+				'callback' => 'getOil',
+				'options' => array(
+						'label' => '油品:',
+						'empty_option' => '--請選擇--',
+						// 'value_options' => '',
+				)
+				,
+				'attributes' => array(
+						//  'value' => 'active'
+				)
+		), 
+		'tank' => array( 
+			'name' => 'tank', 
+			'type' => 'text', 
+			'options' => array( 
+				'label' => '油槽:' 
+			), 
+			'attributes' => array( 
+				'value' => '' 
+			) 
+		), 
+		'nums' => array( 
+			'name' => 'nums', 
+			'type' => 'text', 
+			'options' => array( 
+				'label' => '数量:' 
+			), 
+			'attributes' => array( 
+				'value' => '' 
+			) 
+		), 
+		'price' => array( 
+			'name' => 'price', 
+			'type' => 'text', 
+			'options' => array( 
+				'label' => '單價:' 
+			), 
+			'attributes' => array( 
+				'value' => '' 
+			) 
+		),
+		'purchaseTime' => array( 
+			'name' => 'purchaseTime', 
+			'type' => 'text', 
+			'options' => array( 
+				'label' => '進貨日期:' 
+			), 
+			'attributes' => array( 
+				'value' => '' 
+			) 
+		),
+	)
+	;
+	
+	/**
+     * Form basic Validators
+     *
+     * @var array
+     */
+	protected $mergeFilters = array( 
+		'id' => array( 
+			'name' => 'id', 
+			'required' => false, 
+			'filters' => array(), 
+			'validators' => array( 
+				'notEmpty' => array( 
+					'name' => 'NotEmpty', 
+					'options' => array() 
+				) 
+			) 
+		), 
+		'oil' => array( 
+			'name' => 'oil', 
+			'required' => true, 
+			'filters' => array( 
+				'stripTags' => array( 
+					'name' => 'StripTags' 
+				), 
+				'stringTrim' => array( 
+					'name' => 'StringTrim' 
+				) 
+			), 
+			'validators' => array( 
+				'notEmpty' => array( 
+					'name' => 'NotEmpty', 
+					'options' => array() 
+				)
+			) 
+		), 
+		'tank' => array( 
+			'name' => 'tank', 
+			'required' => true, 
+			'filters' => array( 
+				'stripTags' => array( 
+					'name' => 'StripTags' 
+				), 
+				'stringTrim' => array( 
+					'name' => 'StringTrim' 
+				), 
+				'stringToLower' => array( 
+					'name' => 'StringToLower' 
+				) 
+			), 
+			'validators' => array( 
+				'notEmpty' => array( 
+					'name' => 'NotEmpty', 
+					'options' => array() 
+				)
+			) 
+		), 		
+		'price' => array( 
+			'name' => 'price', 
+			'required' => true, 
+			'filters' => array(), 
+			'validators' => array( 
+				array(
+                    'name' => 'Regex',
+                    'options' => array(
+                        'pattern' => '/^(?!0+(?:\.0+)?$)(?:[1-9]\d*|0)(?:\.\d{1,2})?$/i',
+                        'messages' => array(
+                        	\Zend\Validator\Regex::NOT_MATCH => '請輸入整數或兩位小數點'
+                        ),
+                    ),
+                )				 
+			) 
+		), 
+		'purchaseTime' => array(
+				'name' => 'purchaseTime',
+				'required' => true,
+				'filters' => array(
+						'stripTags' => array(
+								'name' => 'StripTags'
+						),
+						'stringTrim' => array(
+								'name' => 'StringTrim'
+						)
+				),
+				'validators' => array(
+						'notEmpty' => array(
+								'name' => 'NotEmpty',
+								'options' => array()
+						)
+				)
+		),
+		'nums' => array(
+				'name' => 'nums',
+				'required' => true,
+				'filters' => array(),
+				'validators' => array(
+						'Digits' => array(
+								'name' => 'Digits'
+						)
+							
+				)
+		)
+	)
+	;
+	
+	public function getOil($element)
+	{
+	
+		$config=Api::_()->getConfig();
+		$temp = array();
+		if($config['oil']){
+			foreach($config['oil'] as $key => $val){
+				$temp[$val] = $val;
+			}
+		}
+		$element['options']['value_options'] = $temp;
+		return $element;
+	
+	}	
+}

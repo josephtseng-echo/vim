@@ -1,0 +1,61 @@
+<?php
+/**
+ * Global Configuration Override
+ *
+ * You can use this file for overriding configuration values from modules, etc.
+ * You would place values in here that are agnostic to the environment and not
+ * sensitive to security.
+ *
+ * @NOTE: In practice, this file will typically be INCLUDED in your source
+ * control, so do not include passwords or other sensitive information in this
+ * file.
+ */
+
+return array(
+    // ...
+    'pageRows'=>50,
+    'customerType'=>array(
+        'guest'=>'散客',
+        'courtesy'=>'禮遇卡',
+        'member'=>'會員卡',
+        'charge'=>'簽帳客戶',
+
+    ),
+    'payType'=>array(
+        'cash'=>'現金',
+        'credit'=>'一般信用卡',
+        'fleet'=>'車隊卡',
+        'business'=>'營業卡',
+        'jieLi'=>'捷利卡',
+        'debit'=>'簽帳',
+        'cpc'=>'中油VIP點數',
+        'creditBonus'=>'信用卡紅利',
+        'courtesy'=>'禮遇卡',
+        'oilCoupon'=>'油票',
+        'voucher'=>'提貨券',
+        'points'=>'公司點數'
+    ),
+    'testSale'=>array(
+        0=>'一般交易',
+        1=>'試桶',
+        2=>'走字',
+
+    ),
+    'validSale'=>array(
+        0=>'交易有效',
+        1=>'交易無效',
+      ),
+    'saleInvoiceType'=>array(
+        0=>'不開發票',
+        1=>'正常開立',
+        2=>'作廢發票',
+
+    ),
+    'period'=>array(
+        1=>'早班',
+        2=>'午班',
+        3=>'小夜',
+        4=>'大夜',
+
+    ),
+);

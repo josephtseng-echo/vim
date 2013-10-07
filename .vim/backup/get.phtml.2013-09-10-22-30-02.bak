@@ -1,0 +1,110 @@
+<?
+$item = $this->item;
+$title = $item['id'] ? '查閱/編輯' : '新增';
+ 
+$this->headTitle($title, 'SET');
+//$this->textDelay('breadcrumbText', $title);
+
+if($this->form){
+	$form = $this->form;
+} else {
+    $form = $item['id'] ? new Oil\Form\PurchaseEditForm() : new Oil\Form\PurchaseCreateForm();
+
+
+
+}
+
+$form->setMethod($item['id'] ? 'put' : 'post');
+$form->setView($this)
+     ->setAction($this->uri('/admin/oil/purchase/'))
+     ->bind($item);
+$form ->prepare();
+	 		
+
+ 
+ 
+?>
+
+<div class="bloc">
+  <form <?=$this->formAttr($form)?>>
+    <?=$form->restful();?>
+ 
+    <div class="title_clean">
+      <?=$title?>
+    </div>
+    <div class="content">
+
+    <table class="formTable">
+      <tbody>
+      <?php if($item['id']) {?>
+        <tr class="input">
+          <td class='columnName'>ID:</td>
+          <td class='columnContent'><?=$form->helper('id',array('class' => ''))?></td>
+        </tr>
+        <?php } ?>
+        <?php 
+        if($station == 0):
+        ?>
+         <tr class="input <?=$form->isError('station') ? 'error' : '';?>">
+          <td class='columnName'><?=$form->helper('station', 'label', array('class' => 'control-label'))?></td>
+          <td class='columnContent'>
+        <?=$form->helper('station', 'formselect', array(
+                                'class' => '', 'name'=>"station_no"
+                            ))?>
+ <div class="help-block">
+              <?=$form->helper('station', 'formElementErrors')?>
+            </div>
+          </td>
+        </tr>     
+        <?php 
+        else:
+        ?>
+        <?php echo $form->helper('station_no', array('class' => '', 'value' => $station));?>
+        <?php
+        endif;
+        ?>
+       <tr class="input <?=$form->isError('tank') ? 'error' : '';?>">
+          <td class='columnName'><?=$form->helper('tank', 'label', array('class' => 'control-label'))?></td>
+          <td class='columnContent'>
+        <?=$form->helper('tank', 'formselect', array(
+                                'class' => ''
+                            ))?>
+ <div class="help-block">
+              <?=$form->helper('tank', 'formElementErrors')?>
+            </div>
+          </td>
+        </tr>       
+        
+         <tr class="input <?=$form->isError('nums') ? 'error' : '';?>">
+          <td class='columnName'><?=$form->helper('nums', 'label', array('class' => 'control-label'))?></td>
+          <td class='columnContent'><?=$form->helper('nums', array('class' => ''))?>
+            <div class="help-block">
+              <?=$form->helper('nums', 'formElementErrors')?>
+            </div></td>
+        </tr>
+            <tr class="input <?=$form->isError('price') ? 'error' : '';?>">
+          <td class='columnName'><?=$form->helper('price', 'label', array('class' => 'control-label'))?></td>
+          <td class='columnContent'><?=$form->helper('price', array('class' => ''))?>
+            <div class="help-block">
+              <?=$form->helper('price', 'formElementErrors')?>
+            </div></td>
+        </tr>  
+              <tr class="input <?=$form->isError('purchaseTime') ? 'error' : '';?>">
+          <td class='columnName'><?=$form->helper('purchaseTime', 'label', array('class' => 'control-label'))?></td>
+          <td class='columnContent'><?=$form->helper('purchaseTime', array('class' => '', 
+          		'onClick'=>'WdatePicker();', 'readonly' => 'readonly'
+          ))?>
+            <div class="help-block">
+              <?=$form->helper('purchaseTime', 'formElementErrors')?>
+            </div></td>
+        </tr>               
+        <tr>
+          <td class='columnName'>&nbsp;</td>
+          <td class='columnContent'><div class="submit">
+              <input type="submit" value="保存">
+          </div></td>
+        </tr>
+      </tbody>
+    </table>
+  </form>
+</div>

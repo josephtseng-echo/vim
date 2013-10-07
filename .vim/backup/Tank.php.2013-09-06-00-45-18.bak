@@ -1,0 +1,25 @@
+<?php
+
+namespace Oil\Item;
+
+use St\Mvc\Item\AbstractItem;
+
+class Tank extends AbstractItem
+{
+    protected $dataSourceClass = 'Oil\DbTable\Tank';
+
+    protected $inverseRelationships = array();
+
+    protected $relationships = array();
+
+    protected $map = array(
+        'create' => array(
+ 
+        ),
+        'save' => array(
+ 
+        ),
+    );
+ 
+
+}

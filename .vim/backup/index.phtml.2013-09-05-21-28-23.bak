@@ -1,0 +1,101 @@
+<?
+$title ='油品進貨記錄';
+$this->headTitle($title, 'SET');
+
+$form = $this->form ? $this->form : new Oil\Form\PurchaseSearchForm();
+$form->setView($this)
+     ->setMethod('get')
+     ->setAction($this->uri('/admin/oil/purchase/'))
+     ->prepare();
+
+$lableMap = array(
+    'active' => 'label-success',
+    'inactive' => 'label-warning',
+    'deleted' => 'label-inverse',
+);
+?>
+<h1><img src="<?=$this->link('/adminres/img/icons/note-sticky.png')?>" alt="">油品進貨記錄</h1>
+<div class="bloc">
+  <div class="title"></div>
+  <div class="content">
+    <?php
+
+                if($this->flashMessenger()->hasSuccessMessages()){
+				?>
+    <div class="notif success "> 成功:
+      <?=$this->showErrorMessages($this->flashMessenger()->getSuccessMessages())?>
+    </div>
+    <?php
+				}
+				?>
+    <div id='headAction'>
+    <a class="button zoombox w800 h600" href="<?=$this->uri('/admin/oil/purchase/create?station='.$station)?>">
+    <img src="<?=$this->link('/adminres/img/icons/button-white-add.png')?>"> 新 增 </a> </div>
+    <div id="searchDiv">
+
+   <form <?=$this->formAttr($form)?> class="form-inline">
+         搜尋  
+         <?php if(isset($myInfo['isSuperAdmin']) and $myInfo['isSuperAdmin'] == 1):?>
+         <?=$form->helper('station', 'formSelect', array('class' => 'span2'))?>
+         <?php else:?>
+         <?php endif;?>
+         進貨時間區間:
+         <?php echo $form->helper('starttime', array('class' => 'text', 
+         		'onClick'=>'WdatePicker();', 'size' => 10)); ?>&nbsp;/&nbsp;
+         <?php echo $form->helper('endtime', array('class' => 'text', 
+         		'onClick'=>'WdatePicker();', 'size' => 10)); ?>
+           油品:       
+        <?=$form->helper('keyword', 'formSelect', array('class' => 'span2'))?>   
+
+        <button class="button" type="submit"><img src="<?=$this->link('/adminres/img/icons/search.png')?>"> 搜 尋 </button>
+  
+            </form>          
+            
+ 
+    </div>
+    <div class="clear"></div>
+    <div class="notif success " style="display:none;" id='delInfo'> 成功:刪除成功! <a href="#" class="close"></a> </div>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>進貨日期</th>
+          <th>油品</th>
+          <th>油槽</th>
+          <th>數量(L)</th>
+          <th>單價</th>
+          <th>小計(數量*單價)</th>
+          <th>新增者</th>
+          <th>新增時間</th>
+          <th >操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php
+// Render each the title of each post for the current page in a list-item
+foreach ($items as $item) {
+    echo "<tr id='tr_{$item['id']}'>";
+	echo "<td>{$item['id']}</td>";
+	echo " <td>{$item['purchaseTime']}</td>";
+	echo " <td>{$item['oil']}</td>";
+	echo " <td>{$item['tank']}</td>";
+	echo " <td>{$item['nums']}</td>";
+	echo " <td>{$this->num($item['price'])}</td>";
+	$total = $item['price'] * $item['nums'];
+	echo "<td>{$this->num($total)}</td>";
+	echo "<td>{$item['users_name']}</td>";
+	echo "<td>{$item['createTime']}</td>";
+	echo ' <td><a href="#" title="刪除"  onClick="delData(\''.$this->uri("/admin/oil/purchase/{$item['id']}").'\')">
+    		<img src="'.$this->link('/adminres/img/icons/actions/delete.png').'" alt="" width=15 height=15></a></td>';
+	echo '</tr>';
+}
+?>
+      </tbody>
+    </table>
+    <?if($this->paginator):?>
+    <?=$this->paginator->setPath('/admin/oil/purchase/')->setBaseQuery($this->query);?>
+    <?=$this->widget('Core', 'widgets/paginator', $this->vars())?>
+    <?endif;?>
+  </div>
+</div>
+

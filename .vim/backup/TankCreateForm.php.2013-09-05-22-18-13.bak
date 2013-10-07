@@ -1,0 +1,40 @@
+<?php
+
+namespace Oil\Form;
+
+use St\Form\Form;
+use Zend\Form\Element;
+
+class TankCreateForm extends StationForm
+{
+	protected $subFormGroups = array()
+	;
+	protected $mergeElements = array();
+	protected $mergeFilters = array( 
+
+			'no' => array(
+					'required' => true,
+					'validators' => array(
+							'db' => array(
+									'name' => 'St\Validator\Db\NoRecordExists',
+									'injectdata' => true,
+									'options' => array(
+											'field' => 'no',
+											'table' => 'oil_station'
+									)
+			
+							)
+					)
+			),
+	);
+	public function beforeBind($data)
+	{
+		return $data;
+	}
+	public function prepareData($data)
+	{
+
+		
+		return $data;
+	}
+}

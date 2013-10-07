@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+<?= $this->render('layout/header')?>
+</head>
+<body>
+        
+        <?php
+								/** 
+         * Do not use this content for production, this is done for demo purpose (it adds javascript settings pannel
+         */
+								// require 'content/settings/settings.php';
+								$menuArr = array();
+								$menuArr[] = array( 
+									'url' => '/admin', 
+									'text' => '首頁', 
+									'icon' => '/adminres/img/icons/menu/dark/home.png' 
+								);
+								
+	 							$menuArr[] = array( 
+									'text' => '日常作業管理', 
+									'icon' => '/adminres/img/icons/menu/dark/calendar.png', 
+									'sub' => array( 
+										0 => array( 
+											'text' => '交易明細', 
+											'url' => '/admin/oil/sale' 
+										), 
+										3 => array(
+													'text' => '油品進貨記錄',
+													'url' => '/admin/oil/purchase'
+										),
+
+											
+										1 => array( 
+											'text' => '發票跳號處理', 
+											'url' => '/admin/oil/sale/change' 
+										), 
+										2 => array( 
+											'text' => '發票異動記錄', 
+											'url' => '/admin/oil/actionlog' 
+										), 
+									) 
+								);								
+ 						
+ 
+							
+	 							$menuArr[] = array( 
+									'text' => '用戶管理', 
+									'icon' => '/adminres/img/icons/menu/dark/users.png', 
+									'sub' => array( 
+										0 => array( 
+											'text' => '用戶管理', 
+											'url' => '/admin/user' 
+										), 
+										1 => array( 
+											'text' => '角色權限管理', 
+											'url' => '/admin/user/role' 
+										)  ,
+ 
+									) 
+								);
+							 $menuArr[] = array( 
+									'text' => '基本資料管理', 
+									'icon' => '/adminres/img/icons/menu/dark/books.png', 
+									'sub' => array( 
+										0 => array( 
+											'text' => '加油站管理', 
+											'url' => '/admin/oil/station'
+										), 
+										1 => array( 
+											'text' => '油槽管理', 
+											'url' => '/admin/oil/station'
+										), 
+										2 => array( 
+											'text' => '副產品管理', 
+											'url' => '/admin/oil/goods' 
+										)  ,
+ 
+									) 
+								);
+								$menuArr[] = array( 
+									'text' => 'System Test', 
+									'icon' => '/adminres/img/icons/menu/dark/vcard.png', 
+									'sub' => array( 
+										0 => array( 
+											'text' => 'Test', 
+											'url' => '/admin/oil/test' 
+										), 
+										1 => array( 
+											'text' => 'TestCancel', 
+											'url' => '/admin/oil/test/cancel' 
+										), 	
+										2 => array( 
+											'text' => 'TestClean', 
+											'url' => '/admin/oil/test/cleaninvoice' 
+										), 	
+										3 => array( 
+											'text' => 'TestPoints', 
+											'url' => '/admin/oil/test/points' 
+										),						
+									) 
+								);	
+						 $menuArr[] = array( 
+									'text' => '系統設定', 
+									'icon' => '/adminres/img/icons/menu/dark/earth.png', 
+									'sub' => array( 
+											0 => array( 
+											'text' => '操作日誌', 
+											'url' => '/admin/oil/log' 
+										), 
+									) 
+								);						
+ 
+
+								?>
+        
+        <!--              
+                HEAD
+                        -->
+	<div id="head">
+		<div class="left">
+			<a href="#" class="button profile"><img
+				src="<?=$this->link('/adminres/img/icons/top/huser.png')?>" alt="" /></a> 管理員: <a
+				href="#">Admin</a> | <a href="/admin/core/logout/">退出</a>
+		</div>
+
+	</div>
+
+
+	<!--            
+                SIDEBAR
+                         -->
+	<div id="sidebar" class="white">
+		<ul>
+	<?php
+	$thisUrl=$_SERVER['REQUEST_URI'];
+	$pos=strpos($thisUrl,'?');
+	if($pos!==false){
+		$thisUrl=substr($thisUrl,0,$pos);
+		}
+	$t=explode('/',$thisUrl);
+
+	$thisUrl='/'.$t[1];
+	$thisUrl.=$t[2]!=''?'/'.$t[2]:'';
+	$thisUrl.=$t[3]!=''?'/'.$t[3]:'';
+    $thisUrl.=$t[4]!=''?'/'.$t[4]:'';
+	foreach ($menuArr as $menu)
+	{
+		$parentCur=false;
+		$subMenuHtm='';
+		if (!empty($menu['sub']))
+		{
+			$subMenuHtml= '<ul>';
+			
+			foreach ($menu['sub'] as $subMenu)
+			{
+				if ($subMenu['url']==$thisUrl) {
+				$curCls=" class=\"current\" ";
+				$parentCur=true;
+				}else{
+				$curCls='';	
+				}
+				
+			$subMenuHtml.= "<li  $curCls> ";
+				$url = $subMenu['url'] == '' ? '#' : $subMenu['url'];
+		
+			$subMenuHtml.= "<a href=\"{$url}\">
+				 {$subMenu['text']}
+		</a>";
+		
+				$subMenuHtml.= '</li>';
+			}
+						$subMenuHtml.= '</ul>';
+		}
+		
+		
+		$cls = '';
+		if (empty($menu['sub']))
+		{
+			$noSubCls .= ' nosubmenu ';
+		}
+		$cls.=$menu['url']==$thisUrl?" current hover":'';
+		if ($parentCur==true) {
+			$cls.=" current hover ";
+		}
+		
+		echo "<li class=\"$cls\"> ";
+		$url = $menu['url'] == '' ? '#' : $menu['url'];
+		
+		echo "<a href=\"{$url}\"> ";
+		if ($menu['icon']!='')
+		{
+			echo "<img	src=\"".$this->link($menu['icon'])."\" alt=\"\" /> ";
+		}
+		
+		echo $menu['text'];
+		echo 	"</a>";
+echo $subMenuHtml;
+		echo '</li>';
+	}
+	
+	?>
+</ul>
+		
+
+		<a href="#collapse" id="menucollapse">&#9664; 收縮</a>
+
+	</div>
+
+
+
+
+	<!--            
+              CONTENT 
+                        -->
+	<div id="content" class="white">
+           <?= $this->layout()->content?>
+        </div>
+
+
+</body>
+</html>

@@ -1,0 +1,8 @@
+[uwsgi]
+socket = 127.0.0.1:9002
+pythonpath = /home/xiaozeng/work/web
+chdir = /home/xiaozeng/work/web/webpy
+processes = 2
+workers = 4
+;;threads = 2
+wsgi-file = /home/xiaozeng/work/web/webpy/code.py

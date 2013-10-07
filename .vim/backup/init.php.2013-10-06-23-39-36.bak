@@ -1,0 +1,116 @@
+<?php
+require_once dirname(__FILE__).'/./include/init.php';
+
+$_tpl = null;
+
+if($_tpl == null){
+	$_tpl_dir =  _TPL_PATH_.'lily/';
+	$_tpl_c_dir = _DATA_PATH_.'templates_c/front/';
+	$_tpl_cache_dir = _DATA_PATH_.'cache/front/';
+	$_tpl = new Smarty();
+//	$_tpl->caching = 1;
+//	$_tpl->cache_lifetime = 86400;
+	$_tpl->left_delimiter = '{{';
+	$_tpl->right_delimiter = '}}';
+	$_tpl->setTemplateDir($_tpl_dir);
+	$_tpl->setCompileDir($_tpl_c_dir);
+	$_tpl->setCacheDir($_tpl_cache_dir);
+}
+
+$_search_key = 'SEARCH';
+$_act = null;
+
+if(isset($_REQUEST['act']) and !empty($_REQUEST['act'])){
+	$_act = trim($_REQUEST['act']);
+	$_act = strtolower($_act);
+}
+
+$_lan = 'zh';
+
+$sql = 'SELECT
+        '.func_sql_fieldArrayToStr($_xt_tables_set['column']['field']).'
+        FROM '.$_xt_tables_set['column']['name'].'
+        WHERE column_view=1
+		ORDER BY column_order ASC';
+$_init_column_lists = func_adodb_fetchAll($_xt_db, $sql);
+
+$sql = 'SELECT
+        '.func_sql_fieldArrayToStr($_xt_tables_set['link']['field']).'
+        FROM '.$_xt_tables_set['link']['name'].'
+        WHERE link_view=1
+		ORDER BY insert_datetime desc';
+$_init_link_lists = func_adodb_fetchAll($_xt_db, $sql);
+
+$sql = 'SELECT
+        '.func_sql_fieldArrayToStr($_xt_tables_set['page']['field']).'
+        FROM '.$_xt_tables_set['page']['name'].'
+        WHERE page_id != 20 and page_id != 22 and page_id != 23
+		ORDER BY page_id asc';
+$_init_page_lists = func_adodb_fetchAll($_xt_db, $sql);
+
+$sql = 'SELECT 
+        '.func_sql_fieldArrayToStr($_xt_tables_set['procate']['field']).' 
+        FROM '.$_xt_tables_set['procate']['name'].' 
+        WHERE lan = "'.$_lan.'"  AND procate_view =1 AND procate_fid = 0';
+$_init_product_category_lists = func_adodb_fetchAll($_xt_db, $sql);
+if($_init_product_category_lists){
+	foreach($_init_product_category_lists as $key => $val){
+		$_init_product_category_lists[$key]['catlists'] = init_get_product_category($val['procate_id']);
+	}
+}
+
+function init_get_product_category($fid){
+	global $_xt_db;
+	global $_xt_tables_set;
+	global $_lan;
+	$sql = 'SELECT 
+			'.func_sql_fieldArrayToStr($_xt_tables_set['procate']['field']).' 
+			FROM '.$_xt_tables_set['procate']['name'].' 
+			WHERE lan = "'.$_lan.'"  AND procate_view =1 AND procate_fid = '.$fid.' 
+			order by procate_order desc, procate_id desc';
+	$row = func_adodb_fetchAll($_xt_db, $sql);
+    if($row){
+    foreach($row as $key => $val){
+        $sql = 'select '.func_sql_fieldArrayToStr($_xt_tables_set['product']['field']).' 
+            from '.$_xt_tables_set['product']['name'].' 
+            where lan= "'.$_lan.'" and product_view= 1 and procate_id='.$val['procate_id'].' 
+            ORDER BY product_order ASC, product_id ASC ';
+        $res = func_adodb_fetchAll($_xt_db, $sql);
+        $row[$key]['prolists'] = $res;  
+    }
+    }
+	return $row;
+}
+	
+func_smarty_set($_tpl, array('xt_web_set'=>$_xt_web_set,
+'var_column_lists' => $_init_column_lists,
+'var_link_lists' => $_init_link_lists,
+'var_page_lists' => $_init_page_lists,
+'title' =>$_web_set_data['web_name'],
+'meta_keywords' => $_web_set_data['meta_keywords'],
+'meta_description' => $_web_set_data['meta_description'],
+'web_set_data' => $_web_set_data,
+'search_key' => $_search_key,
+'var_product_category_lists' => $_init_product_category_lists,
+'menu_array' => array("class='hover'", "", "", "", "", "")
+));
+$_db = &$_xt_db;
+
+$var_check_menu = end(explode('/', $_SERVER['PHP_SELF']));
+
+/* -- page get start */
+
+define('DISPLAYNUM', 10);
+define('SUBPAGES', 10);
+if(!isset($_REQUEST['page'])){
+	$_page = 1;
+    $_current_page = 1;
+}else{
+    $_current_page = intval($_REQUEST['page']);
+}
+if($_current_page == 1){
+    $_start_page = 0;
+}else{
+    $_start_page = ($_current_page-1)*DISPLAYNUM;
+}
+/* -- page get end */

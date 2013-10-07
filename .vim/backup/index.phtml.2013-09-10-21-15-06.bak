@@ -1,0 +1,95 @@
+<?
+$title ='副產品管理';
+$this->headTitle($title, 'SET');
+
+
+$form = $this->form ? $this->form : new Oil\Form\StationSearchForm();
+$form->setView($this)
+     ->setMethod('get')
+     ->setAction($this->uri('/admin/oil/station/'))
+     ->prepare();
+
+$lableMap = array(
+    'active' => 'label-success',
+    'inactive' => 'label-warning',
+    'deleted' => 'label-inverse',
+);
+?>
+<h1><img src="<?=$this->link('/adminres/img/icons/note-sticky.png')?>" alt="">加油站管理</h1>
+<div class="bloc">
+  <div class="title"></div>
+  <div class="content">
+    <?php
+
+                if($this->flashMessenger()->hasSuccessMessages()){
+				?>
+    <div class="notif success "> 成功:
+      <?=$this->showErrorMessages($this->flashMessenger()->getSuccessMessages())?>
+    </div>
+    <?php
+				}
+				?>
+    <div id='headAction'><a class="button zoombox w800 h600" href="<?=$this->uri('/admin/oil/station/create')?>"><img src="<?=$this->link('/adminres/img/icons/button-white-add.png')?>"> 新 增 </a> </div>
+    <div id="searchDiv">
+                <form <?=$this->formAttr($form)?> class="form-inline">
+         搜尋  關鍵字:       
+       <?=$form->helper('keyword', array('class' => 'text'))?>
+       <?=$form->helper('status', 'formSelect', array('class' => 'span2'))?>
+        <button class="button" type="submit"><img src="<?=$this->link('/adminres/img/icons/search.png')?>"> 搜 尋 </button>
+  
+            </form>
+            
+            
+ 
+    </div>
+    <div class="clear"></div>
+    <div class="notif success " style="display:none;" id='delInfo'> 成功:刪除成功! <a href="#" class="close"></a> </div>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>加油站代碼</th>
+          <th>名稱</th>
+          <th>電話</th>
+          <th>傳真</th>
+          <th>地址</th>
+          
+           <th>站長名稱</th>
+         
+           <th>備註</th>
+          <th>狀態</th>
+          <th >操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php
+// Render each the title of each post for the current page in a list-item
+foreach ($items as $item) {
+
+    echo "<tr id='tr_{$item['id']}'>";
+	echo "<td>{$item['id']}</td>";
+	echo " <td>{$item['no']}</td>";
+	echo " <td>{$item['name']}</td>";
+	echo " <td>{$item['tel']}</td>";
+	echo " <td>{$item['fax']}</td>";
+	echo " <td>{$item['address']}</td>";
+
+	echo " <td>{$item['masterName']}</td>";
+ 
+	echo " <td>{$item['note']}</td>";
+	echo ' <td>'.$this->showStatus($item['status']).'</td>';
+	echo '<td ><a href="'.$this->uri("/admin/oil/station/{$item['id']}").'" title="編輯" class="zoombox w800 h600"><img src="'.$this->link('/adminres/img/icons/actions/edit.png').'" alt=""></a>&nbsp;<a href="#" title="刪除"  onClick="delData(\''.$this->uri("/admin/oil/station/{$item['id']}").'\')"><img src="'.$this->link('/adminres/img/icons/actions/delete.png').'" alt="" width=15 height=15></a>
+    		<a href="'.$this->uri("/admin/oil/tank/create/?sno={$item['no']}").'">油槽管理</a>
+    		</td>';
+	echo '</tr>';
+}
+?>
+      </tbody>
+    </table>
+    <?if($this->paginator):?>
+    <?=$this->paginator->setPath('/admin/oil/station/')->setBaseQuery($this->query);?>
+    <?=$this->widget('Core', 'widgets/paginator', $this->vars())?>
+    <?endif;?>
+  </div>
+</div>
+

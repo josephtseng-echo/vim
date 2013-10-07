@@ -1,0 +1,124 @@
+<?php
+
+namespace Oil\Form;
+
+use St\Api;
+
+class TankForm extends \St\Form\Form
+{
+	/**
+     * Form basic elements
+     *
+     * @var array
+     */
+	protected $mergeElements = array( 
+		'id' => array( 
+			'name' => 'id', 
+			'type' => 'hidden', 
+			'options' => array( 
+				'label' => 'Id' 
+			), 
+			'attributes' => array( 
+				'value' => '' 
+			) 
+		), 
+		'oil' => array( 
+			'name' => 'oil', 
+			'type' => 'text', 
+			'options' => array( 
+				'label' => '油品:'
+			), 
+			'attributes' => array( 
+				'value' => '' 
+			) 
+		), 
+
+		'depot' => array( 
+			'name' => 'depot', 
+			'type' => 'text', 
+			'options' => array( 
+				'label' => '油槽:'
+			), 
+			'attributes' => array( 
+				'value' => '' 
+			) 
+		),
+	)
+	;
+	
+	/**
+     * Form basic Validators
+     *
+     * @var array
+     */
+	protected $mergeFilters = array( 
+		'id' => array( 
+			'name' => 'id', 
+			'required' => false, 
+			'filters' => array(), 
+			'validators' => array( 
+				'notEmpty' => array( 
+					'name' => 'NotEmpty', 
+					'options' => array() 
+				) 
+			) 
+		), 
+		'oil' => array( 
+			'name' => 'oil', 
+			'required' => true, 
+			'filters' => array( 
+				'stripTags' => array( 
+					'name' => 'StripTags' 
+				), 
+				'stringTrim' => array( 
+					'name' => 'StringTrim' 
+				) 
+			), 
+			'validators' => array( 
+				'notEmpty' => array( 
+					'name' => 'NotEmpty', 
+					'options' => array() 
+				), 
+				'stringLength' => array( 
+					'name' => 'StringLength', 
+					'options' => array( 
+						'max' => '128' 
+					) 
+				) 
+			) 
+		), 
+
+
+
+		'depot' => array( 
+			'name' => 'no', 
+			'required' => false, 
+			'filters' => array( 
+				'stripTags' => array( 
+					'name' => 'StripTags' 
+				), 
+				'stringTrim' => array( 
+					'name' => 'StringTrim' 
+				), 
+				'stringToLower' => array( 
+					'name' => 'StringToLower' 
+				) 
+			), 
+			'validators' => array( 
+				'stringLength' => array( 
+					'name' => 'StringLength', 
+					'options' => array( 
+						'max' => '320' 
+					) 
+				) 
+			) 
+		),
+		'status' => array(
+				'name' => 'status',
+				'required' => true,
+				'filters' => array(),
+				'validators' => array()
+		),
+	)
+	;
+}
