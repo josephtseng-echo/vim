@@ -1,0 +1,118 @@
+<?php
+defined('IN_WEB') or die('Include Error!');
+error_reporting(defined('ERR_TYPE')?ERR_TYPE:0);//方便cmsapi使用
+//ini_set('display_errors', true);
+set_time_limit(10);//设置脚本执行时间
+mb_internal_encoding("UTF-8");//设置编码
+if($_COOKIE['bydev'] === 'dev' && $_SERVER['HTTP_HOST'] !== 'vm.boyaa.com'){
+	define('DEMO_PATH', 'demo');
+	define('WWWROOT', dirname(dirname(__FILE__)) . '/demo/');
+}else{
+	define('DEMO_PATH', 'texas');
+	define('WWWROOT', dirname(__FILE__) . '/');
+}
+define('IN_TEXAS', true);
+define('CFGROOT', WWWROOT . 'cfg/');//给线上业务使用的配置文件，由CMS输出
+define('PATH_CFG', WWWROOT . 'config/');//手动配置目录
+define('PATH_LIB', WWWROOT . 'lib/');
+define('PATH_DAT', WWWROOT . 'data/');
+define('PATH_MOD', WWWROOT . 'model/');
+define('PATH_LNG', WWWROOT . 'lang/');
+define('PATH_API', WWWROOT . 'api/');
+define('PATH_INC', WWWROOT . 'includes/');
+define('PATH_AJX', WWWROOT . 'ajax/');
+define('PATH_ACT', WWWROOT . 'activite/');
+define('PATH_AC', WWWROOT . 'ac/');
+include PATH_CFG . 'config.inc.php';
+if(SERVER_TYPE === 'vm'){
+	define('BY_LIB', '/data/wwwroot/cmslib/bylib/');
+}else{
+	define('BY_LIB', WWWROOT .'bylib/');
+}
+if(DEMO_PATH === 'demo'){//内网开发环境
+	$aBase = pathinfo($config['baseUrl']);
+	$config['baseUrl'] = $aBase['dirname'] .'/demo/';
+}
+PRODUCTION_SERVER or (PHP_SAPI == 'cli') or error_reporting(E_ALL ^ E_NOTICE ^ E_DEPRECATED); //只有在非产品非命令行(防止僵尸进程)才打开错误
+
+if(PRODUCTION_SERVER){//CMS输出的配置目录
+	define('PATH_CMS', WWWROOT .'cfg/');
+}else{
+	define('PATH_CMS', WWWROOT .'cfgdemo/');
+}
+
+include WWWROOT . 'texas2.0/Mod.php';
+include PATH_CFG . 'config.common.php';
+include PATH_CFG . 'config.system.php';
+include PATH_CFG . 'config.explevels.php';
+include PATH_CFG . 'config.faces.php';
+include PATH_CFG . 'config.newexp.php';
+include(PATH_MOD . 'oo.php');
+include(PATH_MOD . 'odb.php'); //实现根据业务分db
+include(PATH_MOD . 'okey.php');  //分配cachekey
+include(PATH_MOD . 'ovalue.php'); //序列反序列cache数组
+include(PATH_MOD . 'ocache.php'); //实现根据业务分cache
+include(PATH_MOD . 'omongotable.php');//mongo索引相关
+
+//$config['sid'] != 999 && SERVER_TYPE === 'vm' || SERVER_TYPE === 'demo'
+
+include(PATH_CMS . 'otable/'. $config['sid'] .'.php');
+
+include(PATH_MOD . 'of.php'); //项目相关的静态方法
+include(PATH_LIB . 'functions.php');
+include(PATH_LIB . 'class.phperror.php');
+include(PATH_LIB . 'BY.oo.php');
+
+if((SERVER_TYPE === 'vm')  && ($incFile = BY::incurl('config/inc/', $config['sid']))){//虚拟环境加载自己的inc配置
+	include($incFile);
+}
+if((SERVER_TYPE === 'vm')  && ($sysFile = BY::incurl('config/system/', $config['sid']))){//虚拟环境加载自己的system配置
+	include($sysFile);
+}
+BY::config($config['sid'], true);//强制使用cms配置时区
+oo::setComm($comm);
+define('TEXAS_OSIP', functions::osip(true));
+if(PRODUCTION_SERVER){//线上	
+    echo 'yes';
+	defined('PATH_NO4') or define('PATH_NO4', '/data/demo/wwwroot/texas_'. oo::$config['sid'] .'/texas/');
+}else{//内网
+	defined('PATH_NO4') or define('PATH_NO4', '/data/wwwroot/texas_'. oo::$config['sid'] .'/demo/');
+}
+date_default_timezone_set(isset( $config['timezone']) ? $config['timezone'] : 'Asia/Shanghai');//设置时区.在config.system.php中
+
+if( ( PHP_SAPI != 'cli' ) && ( !defined('PRODUCTION_SERVER') || !PRODUCTION_SERVER ) ){//对非正式环境进行IP检查
+	$ip = functions::getip();
+	if(!of::isBoyaaIp($ip)){
+		echo '<!--',$ip,'-->';
+		die('operation is not found.');
+	}
+	unset($ip);
+}
+
+functions::header();
+functions::nocache();
+
+//格式化输入数组
+function p(){
+	echo '<pre>';
+	$arr = debug_backtrace();
+	$arr = $arr[0];
+	echo '◆ '. $arr['file'] .':'. $arr['line'] ."\n";
+	$p = func_get_args();
+	if(func_num_args() === 1) $p = $p[0];
+	print_r($p);
+	die();
+}
+
+//全面禁止登录
+if(!defined('IN_API') && PRODUCTION_SERVER && oo::$config['closePageAll'] && (php_sapi_name() !== 'cli') && ($f = WWWROOT.oo::$config['closePageAll']) && file_exists($f) ){
+	die(file_get_contents($f));
+}
+//允许公司IP登录
+if(!defined('IN_API') && PRODUCTION_SERVER && oo::$config['closePage'] && (php_sapi_name() !== 'cli') && ($f = WWWROOT.oo::$config['closePage']) && file_exists($f) && ( ! of::isBoyaaIp( functions::getip()))){
+	if(oo::$config['sid']==117&&(IN_PCPAY===true||IN_CMSAPI===true)){
+		
+	}else{
+		die(file_get_contents($f));
+	}
+}

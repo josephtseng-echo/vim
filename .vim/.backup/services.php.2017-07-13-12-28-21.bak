@@ -1,0 +1,17 @@
+<?php
+/**
+ * Short description for services.php
+ *
+ * @package services
+ * @author josephzeng <josephzeng36@gmail.com>
+ * @version 0.1
+ * @copyright (C) 2017 josephzeng <josephzeng36@gmail.com>
+ * @license MIT
+ */
+
+//
+
+$app['test.service'] = function() {
+    return new Controller\TestController();
+};
+print_r($app);

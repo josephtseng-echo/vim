@@ -1,0 +1,20 @@
+<pre>
+实例1-对应的ocache
+MongodbFriends       -- 5020   ---mongoFriends()              5000-1端口  
+MongoMembergifts     --5020   --mongoMembergifts() 			5000-1端口  
+MongoMemberGameinfo  --5020  --mongoMemberGameinfo() 	5000-1端口  
+MongoMembercollects  --5020   ---mongoMembercollects()	5000-1端口  
+道具mongo             --5020    -----mongoUsertool()				5000-1端口  
+
+
+实例2---对应的ocache
+MongodbKvs           --5030   --mongoKvs()					5000-2端口 
+MongoAc              --5030     ---mongoAct();					5000-2端口 
+MongoAct              --5030   ---ac.class.php --- mongo();		5000-2端口 
+
+
+实例3对应的ocache---
+MongoBase   --5040   ---mongoBase()						5000-3端口  
+</pre>
+# sdfsfd
+## sdfsdfsdf

@@ -1,0 +1,51 @@
+"
+" josephzeng | josephzeng36@gmail.com
+" version 0.2
+" 2014-07-03
+"
+
+"设置<leader>,一般和<slient> 不在命令行中回显时使用，例 map <leader>ww :w
+let mapleader=","
+let g:mapleader=","
+let maplocalleader="."
+let g:maplocalleader="."
+
+" 把空格键映射成:
+nmap <space> :
+set backspace=2
+
+
+"判断操作系统
+if has("win16") || has("win32") || has("win64") || has("win95")
+    let g:isWin = 1
+else
+    let g:isWin = 0
+endif
+
+"如果是win系统
+if (g:isWin)
+    set fileformats=dos,unix,mac
+    let $VIMFILES = $VIM.'/vimfiles'
+else
+    set fileformats=dos,unix,mac
+    let $VIMFILES = $HOME.'/.vim'
+endif
+
+"判断是终端还是gvim
+if has("gui_running")
+    let g:isGUI = 1
+else
+    let g:isGUI = 0
+endif
+
+" pathogen plugn
+execute pathogen#infect()
+
+" 加载配置文件
+source $VIMFILES/config/base.vim
+source $VIMFILES/config/shortcuts.vim
+source $VIMFILES/config/plugins.vim
+source $VIMFILES/config/func.vim
+set showcmd
+set ff=unix
+

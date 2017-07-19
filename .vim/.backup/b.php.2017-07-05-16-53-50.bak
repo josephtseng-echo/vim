@@ -1,0 +1,14 @@
+<?php
+function func_check(array $param){
+    $str = '';
+    if(is_null($param) || is_bool($param)){
+		$str .= '';
+	}elseif(is_string($param) || is_numeric($param)){
+		$str .= preg_replace('/[^0-9a-z]/i', '', $param, -1);
+	}else{
+		ksort($param, SORT_STRING);
+		foreach($param as $key => $value){
+			$str .= ($key . '=' .func_check( $value, $mtkey, $api));
+		}
+	}
+}

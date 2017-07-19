@@ -1,0 +1,18 @@
+<?php
+/**
+ * Short description for routes.php
+ *
+ * @package routes
+ * @author josephzeng <josephzeng36@gmail.com>
+ * @version 0.1
+ * @copyright (C) 2017 josephzeng <josephzeng36@gmail.com>
+ * @license MIT
+ */
+
+//
+$app['test.controller'] = function() {
+    return new Controller\TestController();
+};
+
+$cf = $app['controllers_factory'];
+$app->mount("/", $appcf);

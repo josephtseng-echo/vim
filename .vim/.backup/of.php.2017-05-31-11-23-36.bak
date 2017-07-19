@@ -1,0 +1,372 @@
+<?php
+/**
+ * 废弃of，禁止再使用
+ */
+use Mod\Base\Dc;
+use Mod\Base\Site;
+use Mod\Base\Ip;
+use Mod\User\Info;
+use Mod\Bankrupt\Bankrupt;
+class of{
+
+	static $logSid;//日志中心id
+
+	static function getUserRef(){
+		return Dc::getUserRef();
+	}
+
+	//设置log中心sid
+	static function setLogcenterSid( $sid, $unid ){
+		return Dc::set($sid, $unid);
+	}
+
+	//获取logcenter站点id
+	static function getLogcenterSid(){
+		return Dc::sid();
+	}
+
+	/**
+<<<<<<< .mine
+	 * 获取所有FB站点ID
+	 * @return Array
+	 */
+	static function getFacebook(){
+		return array( 13, 55, 57, 67, 101, 103, 104, 108, 110, 120, 124, 141, 142, 143, 144, 146, 149, 159, 160, 164, 165, 166, 168, 169, 170, 171, 172, 173, 174, 175, 176, 178, 179, 185, 192, 193, 194, 195, 201, 202, 203, 204, 206, 211, 212, 230,242,245,246,251 ,258,259,312,346,361,362,363,442,449,480,481,482);
+	}
+
+	/**
+=======
+>>>>>>> .r467884
+	 * 获取统计站点的ID.FACEBOOK和客户端版的混合在同一个SID上,以unid做区分.注意:如果要统计漫游则应执行min(1001, ...)
+	 * @param int $sid
+	 * @param int $unid
+	 * @return int
+	 */
+	static function getCSid( $sid, $unid ){
+		return Dc::getCSid($sid, $unid);
+	}
+
+	/**
+	 * 判断是否是Facebook应用
+	 */
+	static function isFacebook( $sid ){
+		return Site::isFacebook($sid);
+	}
+
+	/**
+	 * 判断是否是国外站点，暂时支付中心代理下单需要
+	 */
+	static function isForeignSite( $sid ){
+		return Site::isForeignSite($sid);
+	}
+
+	/**
+	 * 判断服务器是否跑了Facebook平台
+	 */
+	static function inFacebook(){
+		return Site::inFacebook();
+	}
+
+	/**
+	 * 判断是否需要跑dolist.php异步获取
+	 */
+	static function inDolist(){
+		return Site::inDolist();
+	}
+
+	/**
+	 * 判断是否客户端用户
+	 */
+	static function isPhone( $unid ){
+		return Site::isPhone($unid);
+	}
+
+	/**
+	 * 判断是否博雅币场桌子
+	 */
+	static function isByCashTable( $ttype ){
+		return in_array( (int) $ttype, array(101, 102, 103) );
+	}
+
+	/**
+	 * 获取所有需要统计的小盲注.注意回写的表字段
+	 * @return Array
+	 */
+	static function getBlindmin(){
+		return array( 0, 1, 2, 5, 10, 15, 20, 25, 30, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 25000, 40000, 50000, 80000, 100000, 200000, 250000, 500000 );
+	}
+
+	/**
+	 * 多平台下获取破产挽救配置信息
+	 * @param int $sid
+	 * @param int $unid
+	 * @return array (最多挽救次数,array(第1次挽救赠送,...,第n次挽救赠送),[最多邀请次数,每次邀请赠送,...])，[]为可选项
+	 */
+	static function getBankrupt( $sid, $unid ){
+		return Bankrupt::getCfg($sid, $unid);
+	}
+
+	/**
+	 * 需要记录机器码的api
+	 */
+	static function isSaveDecrypt( $api ){
+		return Site::isSaveDecrypt($api);
+	}
+
+	/**
+	 * 是否是电视机用户
+	 * @param int $api
+	 * @return boolean
+	 */
+	static function isTV( $api ){
+		return Site::isTV($api);
+	}
+
+	/**
+	 * 是否苹果客户端
+	 */
+	public static function isIphone( $api ){
+		return Site::isIphone($api);
+	}
+
+	public static function isRealIphone( $api ){
+		return Site::isRealIphone($api);
+	}
+
+	public static function isRealIpad( $api ){
+		return Site::isRealIpad($api);
+	}
+
+	public static function isAndroid( $api ){
+		return Site::isAndroid($api);
+	}
+
+	public static function isHtml5( $api ){
+		return Site::isHtml5($api);
+	}
+
+	public static function isWinPhone( $api ){
+		return Site::isWinPhone($api);
+	}
+
+	public static function _getApiByUnid($unid){
+		return Site::_getApiByUnid($unid);
+	}
+
+	public static function getApiByUnid($unid){
+		return Site::getApiByUnid($unid);
+	}
+
+	public static function getApis() {
+		return Site::getApis();
+	}
+
+	public static function isIphoneByUnid($unid = 0){
+		return Site::isIphoneByUnid($unid);
+	}
+
+	public static function isAndroidByUnid($unid = 0){
+		return Site::isAndroidByUnid($unid);
+	}
+
+	public static function isHtml5ByUnid($unid = 0){
+		return Site::isHtml5ByUnid($unid);
+	}
+
+	public static function isWinPhoneByUnid($unid = 0){
+		return Site::isWinPhoneByUnid($unid);
+	}
+
+	/**
+	 * 用户id, 站点id, 类型(0,小头像,1中头像,2大头像), sitemid在站点的id,status状态(0正常2禁用头像)5,版本6用户头像6,标志是否显示全路径
+	 */
+	static function getIcon( $mid, $sid, $typ, $sitemid, $mstatus = 0, $mver = 6, $mimg = '', $flag = false, $mgender = 2 ){
+		return Info::getIcon($mid, $sid, $typ, $sitemid, $mstatus, $mver, $mimg, $flag, $mgender);
+	}
+
+	/**
+	 * 获取个人主页
+	 */
+	static function get_site( $sid, $sitemid, $url, $mnick = '' ){
+		return Info::get_site($sid, $sitemid, $url, $mnick);
+	}
+
+	/**
+	 * 判断移动客户端是否支持防攻击架构
+	 *
+	 * @param int $api 客户端类型
+	 * @param string $version 客户端版本
+	 * @return bool 是否支持
+	 */
+	public static function isSupportProxy( $api, $version ){
+		$api = intval( $api );
+		if( !$api || empty( $version ) ){
+			return false;
+		}
+		switch( $api ){
+			//---- iphone ----
+			case 14: //繁体iphone
+			case 19: //泰语iphone
+				return (functions::version_compare( $version, '2.5.0' ) >= 0 ? true : false);
+			case 25: //简体iphone
+				return (functions::version_compare( $version, '2.5.1' ) >= 0 ? true : false);
+			case 37: //印尼iphone
+			case 46: //西班牙iphone
+			case 51: //土耳其iphone
+			case 41: //英语iphone
+			case 45: //德语iphone
+			//case 47: //法语iphone
+			//case 49: //葡萄牙语iphone
+			case 54: //意大利语iphone
+				return (functions::version_compare( $version, '2.4.0' ) >= 0 ? true : false);
+			case 68: //日语iphone
+			case 69: //越南语iphone
+			case 73: //俄语iphone
+			case 76: //阿拉伯语iphone
+				return true;
+
+			//---- ipad ----
+			case 20: //繁体ipad
+			case 24: //泰语ipad
+			case 28: //简体ipad
+				return (functions::version_compare( $version, '2.6.0' ) >= 0 ? true : false);
+			case 70: //德语ipad
+			case 71: //法语ipad
+				return true;
+
+			//---- android ----
+			case 22: //繁体android
+				return (functions::version_compare( $version, '4.1.0' ) >= 0 ? true : false);
+			case 32: //印尼android
+				return (functions::version_compare( $version, '3.7.0' ) >= 0 ? true : false);
+			case 52: //土耳其android
+				return (functions::version_compare( $version, '3.5.0' ) >= 0 ? true : false);
+			case 26: //英语android
+				return (functions::version_compare( $version, '3.8.0' ) >= 0 ? true : false);
+			case 44: //德语android
+			case 62: //越南语android
+				return (functions::version_compare( $version, '3.4.0' ) >= 0 ? true : false);
+			case 36: //简体android
+				return (functions::version_compare( $version, '4.3.0' ) >= 0 ? true : false);
+			//case 48://法语android
+			//return (functions::version_compare($version, '4.5.0') >= 0 ? true : false);
+			//case 50://葡语android
+			//return (functions::version_compare($version, '4.5.0') >= 0 ? true : false);
+			//---- 其它 ----
+			default: //其它版本
+				return false;
+		}
+	}
+
+	/**
+	 * 获取平台拼凑数据
+	 */
+	static function getAppData( $arrUser, $isArr = true, $mid=0 ){
+		return Info::getAppData($arrUser, $isArr, $mid);
+	}
+
+	/**
+	 * @desc 检查来源IP是否属于boyaa公司网段
+	 * @param String $ip IP地址
+	 * @return Boolean 属于则返回true,否则返回false
+	 */
+	static function isBoyaaIp($ip = 0){
+<<<<<<< .mine
+        return true;
+		return oo::lib('ip')->isBoyaa($ip);
+=======
+		return Ip::isBoyaa($ip);
+>>>>>>> .r467884
+	}
+
+	/**
+	 * @desc 将一个正整数分解为2的n次方之和
+	 * @param Int $int 正整数
+	 * @return array
+	 */
+	static function getIntPower($int){
+		$i = 0;
+		$ret = array();
+		while($int > 0){
+			if($int & 1){
+				$ret[] = pow(2, $i);
+			}
+			$i++;
+			$int >>= 1;
+		}
+		return $ret;
+	}
+
+	/**
+	 * @desc 获取对应平台主站sid, 此处主要区分合服sid，不区分pc和移动sid
+	 * @param int $sid
+	 * @return int
+	 */
+	static function getMainSid($sid = 0){
+		return Site::getMainSid($sid);
+	}
+
+	/**
+	 * @desc 检查来源IP是否属于支付中心
+	 * @param String $ip IP地址
+	 * @return Boolean 属于则返回true,否则返回false
+	 */
+	static function isBoyaaPayIp($ip = 0){
+		return Ip::isPay($ip);
+	}
+
+	/**根据sid获取登录方式相关信息
+	 * @param $sid
+	 * @return array
+	 */
+	public static function getLoginType($sid){
+		$sid = $sid ? $sid : oo::$config['sid'];
+		$aRet = array();
+		switch($sid){
+			case 79 :
+				$desc = "游客";
+				break;
+			case of::isFacebook($sid) :
+				$desc = "FB登录";
+				break;
+			case 117 :
+				$desc = "新浪微博";
+				break;
+			case 93 :
+				$desc = "腾讯登录";
+				break;
+			case 232 :
+				$desc = "俄语VK登录";
+				break;
+			case 233 :
+				$desc = "博雅通行证";
+				break;
+			case 237 :
+				$desc = "Twitter登录";
+				break;
+			case 238 :
+				$desc = "Yahoo登录";
+				break;
+			case 331:
+				$desc = 'Vtc登录证';
+				break;
+			case 367:
+				$desc = '俄语OD登录';
+				break;
+			case 368:
+				$desc = "越南Appota登录";
+				break;
+			case 369:
+				$desc = "飞信登录";
+				break;
+			case 404:
+				$desc = 'MoboJoy登录';
+				break;
+			default :
+				$desc = "其他登录方式";
+				break;
+		}
+		$aRet['desc'] = $desc;
+		return $aRet;
+	}
+}

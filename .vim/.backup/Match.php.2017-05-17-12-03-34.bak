@@ -1,0 +1,2173 @@
+<?php
+
+/**
+ * 文件：Match.php
+ *
+ * 5月13日之后的各种类型的比赛接口api，例如定时赛
+ *
+ * @author: xugh
+ * @version: 1.0
+ * Date: 2011-5-13
+ */
+defined( 'IN_WEB' ) or die( 'Include Error!' );
+
+class Match extends Server{
+
+	/**
+	 * 计时赛
+	 *
+	 * @param Array $param
+	 * @return Array
+	 */
+	public function MTTSignUp( $param ){
+		if( !$this->auth( $param, 3 ) ){
+			return $this->genRet( $param['mid'], array('result' => -240) );
+		}
+		$now = time();
+		$mid = (int) $param['mid'];
+		$unid = (int) $param['unid'];
+		$sid = (int) $param['sid'];
+		$langtype = (int) $param['langtype'];
+		$event = (int) $param['param']['event'];  //活动来的 微游戏女人淘金赛
+		$mtype = (int) $param['param']['mtype'];  //新版淘金赛类型
+		$spid = (int) $param['param']['spid'];  //场次id
+		$useByb = (int) $param['param']['useByb']; //玩家选择博雅币
+		$integral_reg = (int) $param['param']['integral_reg']; //玩家选择积分
+		$city = (int) $param['param']['city']; //泰语城市之星淘金赛
+		$invite = (int) $param['param']['invite'];	//是否邀请的方式
+		$type = (int) $param['param']['type'];//类型 0 正常，1延迟
+		$delayTime = (int) $param['param']['delayTime'];//延迟分钟 按秒
+		$signMoney = (int) $param['param']['signMoney'];//报名费
+        $startTime = (int) $param['param']['gameBeginTime']; //时间戳 客户端没传这个值了
+        $svid = $startTime ?  oo::matchnew()->getSvrId($startTime, $mtype) : 0;
+		$sigTime = (int) $param['param']['sigTime']; //比赛开始时间 AS 传时间戳
+        $sigTime = $sigTime ? $sigTime : oo::matchnew()->getSigTime($mtype);//server开始比赛时间（北京时间）
+        $sigTime = ($type && $startTime) ?  $startTime : $sigTime;//延时报名的
+        $svid = oo::matchnew()->getSvrId($sigTime, $mtype);
+        
+        if(oo::$config['mttMaxSign'] && oo::$config['mttmatchnew'][$mtype]['numupperlimit']){//最大报名人数
+        	$nowSignNum = oo::mttuser()->getRealSignCnt($svid, $sigTime);
+        	if($nowSignNum >= (int)oo::$config['mttmatchnew'][$mtype]['numupperlimit']){
+        		oo::lc()->sendEvent(of::getLogcenterSid(), $mid, 'mttmaxsign', array("报名失败 " => 1, $mtype=>1));
+        		return $this->genRet($mid, array( 'result' => -102 ));
+        	}
+            //仅剩2个席位时开始防并发
+            if (($nowSignNum - (int)oo::$config['mttmatchnew'][$mtype]['numupperlimit']) <= 2){
+                $cacheKey = "concurrent|".oo::$config['sid']."|MTTSIGN|{$mtype}";
+                if(! ocache::cache()->add($cacheKey,1,2)){ //主要是游戏币报名时走mserver可能需要比较长时间
+                    oo::lc()->sendEvent(of::getLogcenterSid(), $mid, 'mttmaxsign', array("报名并发" => 1, $mtype=>$mtype));
+                    return $this->genRet($mid, array( 'result' => -105 ));
+                }
+            }
+        }
+        
+		//由PHP来判断报名是否为延迟报名
+		$delay = (int)oo::$config['mttmatchnew'][$mtype]['delay'];
+		$delayTime = (int)oo::$config['mttmatchnew'][$mtype]['delayTime'];
+		$type = ($delay  && $delayTime) ? (int)($now > $sigTime && $sigTime + $delayTime > $now) : 0;
+		
+		if(oo::$config['mttDelaySignupOpt'] && $now > $sigTime ){//延时报名优化
+			
+			$delayStatusKey = okey::mkMttDelayStatus($svid, $sigTime);
+			$delayStatus = ocache::mttsig()->get($delayStatusKey);
+			if($delayStatus){//已经不允许报名了
+				oo::lc()->sendEvent(of::getLogcenterSid(), $mid, 'mttdelayopt', array("报名超限 " => 1));
+				oo::logs()->debug(array(date('Y-m-d H:i:s'), $mid, $delayStatus, $mtype, $sigTime, $now),'mttdelayoptsign.txt');
+				return $this->genRet($mid, array( 'result' => -101 ));
+			}
+			oo::lc()->sendEvent(of::getLogcenterSid(), $mid, 'mttdelayopt', array("报名 " => 1));
+			$delay = 1;//强制为true
+		}
+		
+		//国内开赛前10秒不允许报名 海外加开关mttSignUp_10sLeft
+		$_10sLeft = in_array(oo::$config['langtype'],array(1)) || oo::$config['mttSignUp_10sLeft'];
+		if ($_10sLeft && in_array($mtype,oo::$config['mttmatchnew_mtype']) && $type!=1){
+			$timediff = (int) oo::$config['jbsnew']['timediff'];//与北京时间时差
+			$iSignUpTime = $sigTime-$timediff;
+			if ($iSignUpTime-time() <= 10  ){
+				return $this->genRet($mid, array( 'result' => -10 ));
+			}
+		}
+        
+		$sigMoney = 10000;   //费
+		(oo::$config['sid'] == 124) && ($sigMoney = 0);
+		(oo::$config['sid'] == 101) && $invite && ($sigMoney = 0);
+		(oo::$config['sid'] == 144) && ($sigMoney = 1000);
+		(oo::$config['sid'] == 143) && ($sigMoney = 0);
+		(oo::$config['sid'] == 197) && ($sigMoney = 0);
+
+		$aUser = oo::minfo()->getMinfo($mid, array('mexplevel', 'mexp', 'sid', 'unid', 'mmoney','mtime','vmoney','mpay','mcommendtype','mcommend'), false );
+		//土语修改淘金赛费方案
+		if( oo::$config['sid'] == 103 ){
+			$expLevel = isset( $aUser['mexplevel'] ) ? $aUser['mexplevel'] : oo::expLevel()->getLevelByExp( (isset( $aUser['mexp'] ) ? $aUser['mexp'] : oo::expLevel()->getUserExp( $mid ) ) );
+			$arrUser = $aUser;
+			if( ($expLevel == 0 && $arrUser['mmoney'] > 500000) || $expLevel > 0 ){
+				$sigMoney = 5000;
+			}else{
+				$sigMoney = 0;
+			}
+		}
+		if( ($sid == 104) && isset( oo::$config['frMttReward'] ) && oo::$config['frMttReward'] ){
+			$sigMoney = 20000;
+		}
+		if (isset(oo::$config['openjinbiao']) && in_array($mtype, (array) oo::$config['mttmatchnew_mtype'])) {//新版淘金赛
+			if (oo::$config['openjinbiao'] == 1) {
+				$aRet = oo::matchnew()->MTTSignUp($mid, $sid, $mtype, $useByb, $sigTime, $type, $svid, $param);
+				if(!is_array($aRet) || $aRet['result'] != 1) oo::logs()->debug(date("Y-m-d H:i:s") . " mid " . $mid . " type " . $type . "ret:" .json_encode($aRet), "delaysign0923.txt", 10);
+				//意大利淘金赛
+				if (($aRet['result'] == 1) && oo::$config['act731']) {
+					oo::act(731)->doJbs($mid, 1);
+				}
+			} else {
+				$aRet = array('result' => -14);
+			}
+			if (oo::$config['blowup'] > 1) {//印尼的要加三个0
+				($aRet['money'] = $aRet['money'] * oo::$config['blowup']);
+			}
+
+			//WCA 上报lc 
+			if ($aRet['result'] == 1 && oo::$config['act866'] && in_array($mtype, array(50, 51, 54, 55))) {
+				if (in_array($mtype, array(50, 54, 55))) {
+					if (in_array($sid, array(117, 31)) && !oo::act(866, $sid)->ifFinalDate() && date('H:i', $sigTime) == "18:30") {
+						$sigTime = strtotime("20:00:00");
+					}
+					oo::lc()->sendEvent(of::getLogcenterSid(), $mid, 'ATOP锦标赛', array("1_初赛人数" . date("Hi", $sigTime) => 1));
+				} else if ($mtype == 51) {
+					oo::lc()->sendEvent(of::getLogcenterSid(), $mid, 'ATOP锦标赛', array("2_决赛人数" => 1));
+				}
+			}
+
+			oo::matchnew()->updateSignFee($mtype, $sigTime); //更新奖池(报名人数X报名费)
+			return $this->genRet($mid, $aRet);
+		}
+
+		$sigFlag = oo::match()->getMttSignflag( $mid, $event );
+		$sigTime = oo::match()->getSigTime();//获取下一次比賽时间
+		if( !$hourDiff = (int)oo::$config['matchTimeDiff'] ){//cms配置的比赛场时差,小时
+			in_array($sid, array(101, 104, 124, 144, 143, 312)) && ( $hourDiff = 6 );//server取的是服务器时间(北京时间)，没有区分时区，所以要算时差
+			in_array($sid, array(197, 232, 185, 447)) && ( $hourDiff = 4 );
+			in_array($sid, array(103)) && ( $hourDiff = 5 );
+			in_array($sid, array(57, 110)) && ( $hourDiff = 1 );
+		}
+		$sigTime_for_c = $sigTime + $hourDiff * 3600;
+		$Ymd = date( 'Y-m-d H:i:s', $sigTime_for_c );
+
+		if( strcmp( $sigFlag, $Ymd ) == 0 ){//今天已經報名
+			return $this->genRet( $mid, array( 'result' => -5 ) );
+		}elseif( $resetDiff = (int)oo::$config['matchTimeDiffReset'] ){//时差调整
+			$YmdOld = date( 'Y-m-d H:i:s', $sigTime_for_c + $resetDiff * 3600 );
+			if( strcmp( $sigFlag, $YmdOld ) == 0 ){//恢复cache
+				oo::match()->cacheSignUp($mid, $Ymd);
+				return $this->genRet( $mid, array( 'result' => -5 ) );
+			}
+		}
+
+		$available_money = (int) oo::money()->getAvailableMoney( $aUser['mid'] );//用户实际可用的钱
+		if( ( $available_money < $sigMoney * oo::$config['blowup'] ) ){//不够费
+			return $this->genRet( $mid, array( 'result' => -1 ) );
+		}
+		//检查是否关闭了入口
+		if( oo::match()->getCloseFlag( $event ) == 1 ){
+			return $this->genRet( $mid, array( 'result' => -2 ) );
+		}
+		if( $sigMoney > 0 ){//从db检查用户是否已经
+			$aSigFlag = oo::mttuser()->getSigInfo( $mid, 1, $sigTime );
+			if( ($aSigFlag['mid'] == $mid) && ($aSigFlag['sigtime'] == $sigTime) ){
+				oo::match()->cacheSignUp( $mid, $Ymd );//更新cache
+				return $this->genRet( $mid, array( 'result' => -5 ) );
+			}
+		}
+		$aOnline = oo::membertable()->onlineinfo( $mid );
+		if( $aOnline['tid'] > 0 && !oo::$config['newbankruptcy'] && !in_array( $mid, (array) oo::$config['userTest'] ) ){//新版破产救济可以再房间里面
+			return $this->genRet( $mid, array( 'result' => -6 ) );
+		}
+		
+		if( ($sigMoney == 0) || (oo::logs()->addWin( $mid, 172, 1, $sigMoney, $Ymd, '', true ) !== false) ){
+			oo::logs()->debug(array($param), 'fr_match2.txt');
+			oo::mttuser()->saveSigInfo( $mid, 1, $sigTime );//更新mysql数据表
+			if( oo::match()->cacheSignUp( $mid, $Ymd) ){ //更新cache
+				oo::match()->incCurSignCount( $sigTime, 1 );//累加其人数，缓存4天
+				oo::lottery()->setWYXsnglogs( $mid, 1 );
+				$csid = min( 1001, of::getCSid( $aUser['sid'], $aUser['unid'] ) ); //获取统计站点ID
+				
+				$name = (string) oo::$config['ttype'][8];
+				$subName = str_replace(':', '_', substr(date('Y-m-d H:i:s', $sigTime), 11)) . $name;// 21_00_00淘金赛
+				oo::dc()->sendData(of::getLogcenterSid(), 30, array('uid' => $mid, 'lts_at' => time(), 'name' => $name, 'subname' => $subName, 'entry_fee'=> $sigMoney));
+				
+				//淘金赛上报mf
+				oo::mf()->send( $sid, $mid, 'mtt_tjs_old_signup', array( 'lts_at' => time(), 'name' => $name, 'subname' => $subName, 'entry_fee'=> $sigMoney,'sigTime'=>$sigTime), time() );
+				
+				($aUser['mcommendtype'] == 2) && oo::dc()->sendData( of::getLogcenterSid(), 'ad_custom', array( 'uid' => $mid, 'platform_uid' => $aUser['sitemid'], 'ad_id' => $aUser['mcommend'], 'et_id' => 8, 'et_val' =>$sigMoney, 'lts_at' => $now ,'et_name'=>'MTTSignUp', 'ip' => functions::getip() ));
+
+				$flag = ( ( (time() + 10 * 60) >= $sigTime ) && ( time() < $sigTime ) ) ? 1 : 0; //是否在10分钟内
+
+				oo::$config['ac'] && oo::ac('task') && oo::ac('task')->init('goldrush', $mid, array('buy' => 0), $sid);//ac任务 淘金赛
+				if(in_array($sid, array(144,197,232,185,143,447))){
+					oo::lc()->sendEvent( of::getLogcenterSid(), $mid, '淘金赛统计', array("人数" =>1));
+				}
+                //意大利淘金赛
+                if(in_array($sid, array(60, 143))){
+					oo::act(731)->doTjs($mid,1);
+				}
+				if( BY::isOpen('act471', $mid) ){//越南回归的赌神任务
+					$act471 = oo::act(471);
+					$act471->commApi($mid, Act471::TASK_GOLD);
+				}
+				//开关：act[aid]_mttSignUp，在model中加mttSignUp()方法
+				BY::actExecFun('mttSignUp', array('mid'=>$mid));
+				
+				(oo::$config['blowup'] > 1) && ($sigMoney = $sigMoney * oo::$config['blowup']);//返回给flash刷新游戏币的数值
+				return $this->genRet( $mid, array( 'result' => 1, 'money' => $sigMoney, 'flag' => $flag, 'mtype' => $mtype ) );
+			}
+			return $this->genRet( $mid, array( 'result' => -4 ) );
+		}
+        oo::lc()->sendEvent(of::getLogcenterSid(), $mid, '淘金赛', array('人数' => 1));
+		return $this->genRet( $mid, array( 'result' => -3 ) );
+	}
+
+	/**
+	 * 锦标赛退赛
+	 * roke
+	 * @param Array $param
+	 * @return Array
+	 */
+	public function MTTQuit($param) {
+		if( !$this->auth( $param, 1 ) ){
+			return $this->genRet( $param['mid'], array( 'result' => -100 ) );
+		}
+		$mtype = (int) $param['param']['mtype'];
+		if(!oo::$config['act824_quitGame']) {//开关控制
+			return $this->genRet( $param['mid'], array( 'result' => -200 ) );
+		}
+		$mid = (int) $param['mid'];
+		$sid = (int) $param['sid'];
+		
+		$sigTime = (int) $param['param']['sigTime'];
+		$ret = oo::matchnew()->MTTQuit( $mid, $sid, $mtype, $sigTime );
+		return $this->genRet( $param['mid'], $ret );
+	}
+
+	/*
+	 * MMT倒计时10s，记录在线玩家，退赛不退费的
+	 * $mtype 比赛类型
+	 * $sigTime 开赛时间(当地时间)
+	 */
+	public function recordOnline( $param ) {
+		if( !$this->auth( $param, 1 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$mid = (int) $param['mid'];
+		$mtype = $param['param']['mtype'];
+		$sigTime = $param['param']['sigTime'];
+		$ret = oo::matchnew()->recordOnline($mid, $mtype, $sigTime);
+		oo::logs()->debug( date('Y-m-d H:i:s').'-mid:'.$mid.'-mtype:'.$mtype.'-sigTime:'.$sigTime.'-ret:'.json_encode($ret).'-diff:'.($sigTime - (int)$ret['time']) , 'recordOnline.txt' );
+		return $this->genRet( $mid, $ret );
+	}
+
+	/**
+	 * 计时赛实时排名
+	 *
+	 * @param Array $param
+	 * @return Array
+	 */
+	public function MTTRankList( $param ){
+		if( !$this->auth( $param, 1 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$mid = (int) $param['mid'];
+		$friendlist = (int) $param['param']['friendlist'];//是否我的好友排行榜
+		$event = (int) $param['param']['event'];  //活动来的 微游戏女人淘金赛
+		$mtype = (int) $param['param']['mtype'];  //新版淘金赛类型
+
+		$aMatchType = oo::match()->getMatchType( 0, 0, $event, $mid );
+		$type = $aMatchType['type'];//比赛类型
+
+		if( oo::match()->getmttstatus( $type, $event, $mid ) != 1 && ( oo::match()->rankdelay( $event ) != 1 ) ){
+			return $this->genRet( $param['mid'], array( 'result' => 0 ) );
+		}
+
+		$startRank = empty( $param['param']['start'] ) ? 0 : max( 0, intval( $param['param']['start'] ) );//开始位置
+		$endRank = empty( $param['param']['end'] ) ? 20 : max( 1, intval( $param['param']['end'] ) );//结束位置
+		$rankLen = ($endRank - $startRank) > 19 ? 0 : ($endRank - $startRank);
+
+		$aRankKey = range( 1, 20 );
+		if( $type == 0 ){
+			if( $friendlist == 1 ){//好友排行榜
+				$aList = oo::match()->makeFriendRanks( $mid, $type, $event );
+				return $this->genRet( $mid, array( 'result' => 1, 'list' => $aList ) );
+			}
+			$aCache = oo::match()->multiRank( $aRankKey, $event, $type, $mid );
+		}else{
+			if( $friendlist == 1 ){//好友排行榜
+				$aList = oo::match()->makeFriendRanks( $mid, $type, $event );
+				return $this->genRet( $mid, array( 'result' => 1, 'list' => $aList ) );
+			}
+			$aCache = oo::match()->multiRank( $aRankKey, $event, $type, $mid );//批量获取排名数据
+		}
+
+		$aList = array( );
+		foreach( $aCache as $k => $v ){
+			$aRow = functions::unserialize( $v );
+			$mids[] = $aRow['uid'];
+		}
+		$aMinfo = oo::minfo()->getFieldsMulti($mids, array('unid', 'mbloodtype', 'mname', 'mnick', 'micon3', 'micon2', 'micon', 'sitemid', 'mpage') );
+		//mid,筹码数，昵称，排名，头像地址,微博头像
+		
+		foreach( $aCache as $k => $v ){
+			$aRow = functions::unserialize( $v );
+			$aUser = $aMinfo[$aRow['uid']];
+			$nick = $aUser['mnick'];
+			$icon = $aUser['micon'];
+			$mpage = (oo::$config['sid'] == 117) ? 'http://weibo.com/' . $aUser['sitemid'] : $aUser['mpage'];
+			$aList[] = array( $aRow['uid'], $aRow['chips'], $nick, $k, $icon, $mpage );
+		}
+		return $this->genRet( $mid, array( 'result' => 1, 'list' => $aList ) );
+	}
+
+	/**
+	 * 计时赛状态
+	 *
+	 * @param Array $param
+	 * @return Array
+	 */
+	public function MTTStatus( $param ){
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$mid = (int) $param['mid'];
+		$sid = (int) $param['sid'];
+		$unid = (int) $param['unid'];
+		$langtype = (int) $param['langtype'];
+		$mtype = (int) $param['param']['mtype'];  //新版淘金赛类型
+		
+		$closeFlag = oo::match()->getCloseFlag();
+		$type = 0;//比赛类型 0=普通日赛
+
+		$now = time();
+
+		if( ( oo::$config['openMttMatch'] != 1 ) || ( $closeFlag == 1 ) ){
+			$result = -1;
+		}elseif( ((oo::match()->getmttstatus( 0, $mid ) == 1) || ( oo::match()->rankdelay() == 1 ))){//比赛进行中
+			$result = 2;
+		}else{//中
+			$result = 1;
+		}
+
+		if( $result == 2 ){//如果比赛中，在排行榜上显示的参与人数应为今天的
+			$sigTime = oo::match()->getNowMatchTime();
+		}else{
+			$sigTime = oo::match()->getSigTime();
+		}
+
+		$aMatchType = oo::match()->getMatchType( $mid, $sigTime, $event, $mid );
+
+		$sigup = (int) $aMatchType['sigup'];
+		$type = (int) $aMatchType['type'];
+
+		$type = 0;
+		$todayUserSig = oo::match()->getMTTCount( $sigTime );//此次比赛玩家数
+
+		$aRankreward[15][0] = array( 500, 200, 100 );//漫游
+		$aRankreward[15][1] = array( 1000, 500, 300 );
+		$aRankreward[28][0] = array( 100, 50, 20 );
+		$aRankreward[28][1] = array( 500, 200, 100 );
+		$aRankreward[117][0] = array( 500, 200, 100 );//新浪微遊戲
+		$aRankreward[117][1] = array( 0, 0, 0 );
+		$aRankreward[13][0] = array( 500, 200, 100 );//fb繁體
+		$aRankreward[13][1] = array( 1000, 500, 300 ); //台湾平台
+		$aRankreward[13][2] = array( 1010, 500, 300 );//圣诞预热赛
+		$aRankreward[1][0] = array( 500, 200, 100 );//人人網
+		$aRankreward[1][1] = array( 0, 0, 0 );
+		$aRankreward[56][0] = array( 500, 200, 100 );//開心網
+		$aRankreward[56][1] = array( 0, 0, 0 );
+		$aRankreward[1000][0] = array( 500, 200, 100 );//漫游
+		$aRankreward[1000][1] = array( 1000, 500, 300 );
+		$aRankreward[93][0] = array( 500, 200, 100 );//腾讯
+		$aRankreward[93][1] = array( 0, 0, 0 );
+		$aRankreward[57][0] = array( 5, 2, 1 );//泰语
+		$aRankreward[57][1] = array( 0, 0, 0 );
+		$aRankreward[57][2] = array( 10, 5, 3 );//圣诞预热赛
+		$aRankreward[57][3] = array( 5, 0, 0 );//圣诞赛
+		$aRankreward[67][0] = array( 5, 2, 1 );//印尼
+		$aRankreward[67][1] = array( 0, 0, 0 );
+		$aRankreward[110][1] = array( 6, 4, 2 ); // 越语 110代表站点
+		$aRankreward[110][2] = array( '500K', '300K', '200K' ); // 越语 110代表站点
+
+		$titletip = '每日21點 開賽'; //默认返回标题
+		$currrentPlayer = oo::match()->getCurrentPlayer( $mid );
+		if( $type == 1 ){
+			$sigTime = strtotime( substr_replace( (string) oo::$config['mttmatch']['mttweek'][1], ':', 2, 0 ) );
+		}
+
+		$gamePreTime = $sigTime - 10 * 60;//提前10分钟进场
+		$timediff = 0;//与北京时间时差
+		if( in_array( $langtype, array( 11) ) && (!oo::$config['matchTimeDiffReset']) ){//印尼
+			$timediff = 3600;
+		}
+
+		//传给flash显示第一、二、三名的奖金
+		$rwtype = $type;
+		if( oo::$config['open_mc_tjs'] == 1 ){//圣诞淘金赛
+			$rwtype = 2;
+		}
+		if( isset( oo::$config['doubleMttReward'] ) && (oo::$config['doubleMttReward'] == 1) ){
+			$rwtype = 1;
+		}
+
+		if( in_array(oo::$config['sid'], array(110)) ) {//越南更改标题
+			($type != 1) && ($titletip = '20:00 hàng tối bắt đầu thi đấu');			
+		}
+
+
+		$aRankrw = isset( $aRankreward[min( 1001, $sid )][$rwtype] ) ? $aRankreward[min( 1001, $sid )][$rwtype] : ( isset( oo::$config['rankreward'][$rwtype] ) ? oo::$config['rankreward'][$rwtype] : array( '0', '0', '0' ) );
+		$sigmoney = 0;
+		if( in_array( $langtype, array( 0, 10, 11, 5 ) ) ){
+			$sigmoney = 10000;//收费了
+			$sigmoney = oo::$config['blowup'] > 0 ? $sigmoney * oo::$config['blowup'] : $sigmoney;
+		}
+		$panelName = 0;
+		if( ($type != 1) && (oo::$config['langtype'] == 1) ){
+			$sigmoney = 10000;//收费了
+			$titletip = '每日晚21:00开赛'; //默认返回标题
+		}
+		$flag = ( ( ($now + 10 * 60) >= $sigTime ) && ( $now < $sigTime ) ) ? 1 : 0; //是否在10分钟内
+	
+		if( oo::$config['sid'] == 124 ){
+			$signType = 1;
+		}
+		if( oo::$config['newmttmatch'] == 1 ){
+			$type = 0;
+			$aRankrw = array( 1000, 400, 200 );
+		}
+		$rankList = array();
+
+		return $this->genRet( $mid, array( 'result' => $result,
+					'type' => $type,
+					'sigup' => $sigup,
+					'sigcnt' => $todayUserSig, //人数
+					'curply' => $currrentPlayer, //当前在玩人数
+					'gametime' => array( date( 'H:i', $gamePreTime - $timediff ), date( 'H:i', $sigTime - $timediff ) ),
+					'rankrw' => $aRankrw,
+					'sigmoney' => $sigmoney, //费
+					'flag' => $flag,
+					'lasttime' => abs( $now - $sigTime ), //比赛倒计时
+					'event' => 0, //活动来的 微游戏女人淘金赛
+					'titletip' => $titletip,
+					'giftIcon' => $giftIcon,
+					'giftName' => $giftName,
+					'signType' => $signType,
+					'wgmatch' => (int) $wgmatch, //越南淘金周赛
+					'panelName' => (int) $panelName,//淘金赛
+					'rankList' => $rankList,  //法语排行榜前3名
+					'iscom' =>$iscom ? $iscom : 0,//控制是否显示排行榜按钮
+				)
+		);
+	}
+
+	/**
+	 *mtt奖励弹框 优化版
+	*/
+	public function mttRewardPop($param) {
+		if(!PRODUCTION_SERVER){
+				oo::logs()->debug(date("Y-m-d H:i:s") . json_encode(array($param,$_SERVER['HTTP_EID'],$_SERVER['HTTP_SID'],$_SERVER['HTTP_FLOWID'],$_SERVER['HTTP_CLIENTID'])) , 'matcherr1.txt');
+		}
+		if( !$this->auth( $param, 3 ) ){
+			if(!PRODUCTION_SERVER){
+				oo::logs()->debug(date("Y-m-d H:i:s") . json_encode(array($param,$_SERVER['HTTP_EID'],$_SERVER['HTTP_SID'],$_SERVER['HTTP_FLOWID'],$_SERVER['HTTP_CLIENTID'])) , 'matcherr3.txt');
+			}
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$return = oo::matchnew()->mttRewardPop($param);
+		if(!PRODUCTION_SERVER){
+			oo::logs()->debug(date("Y-m-d H:i:s") . json_encode(array($param, $return,$_SERVER['HTTP_EID'],$_SERVER['HTTP_SID'],$_SERVER['HTTP_FLOWID'],$_SERVER['HTTP_CLIENTID'])) , 'matcherr2.txt');
+		}
+		return $this->genRet($param['mid'], $return);
+	}
+
+	/**
+	 * 计时赛发额外奖励（不包括金币）
+	 *
+	 * @param type $param
+	 * @return type
+	 */
+	public function MTTReward( $param ){
+		if( !$this->auth( $param, 3 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$sid = (int) $param['sid'];
+		$mtype = (int) $param['param']['mtype'];  //新版淘金赛类型，与AS确认此处全平台传的mtype为9999
+		$sigTime = (int) $param['param']['sigTime'];//开赛时间
+		if( oo::$config['GoldRushGame'] && $mtype == 9999 ){//产品新版淘金赛,增加复活机制
+			return $this->genRet( $param['mid'], oo::goldRush($sid)->mttReward($param) );
+		}
+		
+		if( (oo::$config['openMttMatch'] != 1) && (oo::$config['openjinbiao'] != 1) ){
+			return $this->genRet( $param['mid'], array( 'result' => -1 ) );
+		}
+
+		$rewardCfg = PATH_CFG . 'config.mttreward.php';
+		if( is_file( $rewardCfg ) ){
+			include( $rewardCfg );
+		}else{
+			return $this->genRet( $param['mid'], array( 'result' => 0 ) );
+		}
+
+		$tid = (int) $param['param']['tid'];
+		$mid = (int) $param['mid'];
+		$rank = (int) $param['param']['rank'];
+		$event = (int) $param['param']['event'];  //活动来的 微游戏女人淘金赛
+		$langtype = (int) $param['langtype'];
+		$nowMatch = time();//獲取正在進行的比賽開始時間
+		$return = array( );//返回结果
+
+		$mttCount = 0;
+
+		$aMatchType = oo::match()->getMatchType( 0, 0, $event, $mid );
+		$type = (int) $aMatchType['type'];//比赛类型
+
+		if( $type == 1 ){
+			$aMttRw[101] = array( 1 => array( 10000000, 0, 0 ), 2 => array( 4000000, 0, 0 ), 3 => array( 2000000, 0, 0 ) );
+			$aRankInfo = oo::match()->getRankInfo( $rank, $event, $type, $mid );//重设周赛奖励
+			$config['mttrank'] = isset( $aMttRw[$sid] ) ? $aMttRw[$sid] : array( 1 => array( 10000000, 0, 0 ), 2 => array( 5000000, 0, 0 ), 3 => array( 3000000, 0, 0 ) );
+		}else{
+			$aRankInfo = oo::match()->getRankInfo( $rank, $event, $type, $mid );
+		}
+
+		$isChampionship = 0;
+		if( isset( oo::$config['openjinbiao'] ) && (oo::$config['openjinbiao'] == 1) && in_array( $mtype, (array)oo::$config['mttmatchnew_mtype'] ) ){//锦标赛赛
+			$isChampionship = 1;//属于锦标赛
+			if(oo::matchnew()->isMTTSignOpt($mtype) && !$sigTime){
+				$aTable = oo::tables()->getTableById($tid, TRUE, array('svid'));
+				$svid = functions::uint($aTable['svid']);
+				$signTime_for_c = oo::matchnew()->getSignUpTime($mid, $svid);
+				if($signTime_for_c){
+					$sigTime = $signTime_for_c - 3600 * oo::matchnew()->getHourDiff();
+				}
+			}else{
+				$sigTime or $sigTime = oo::matchnew()->getSigLastTime( $mtype );//此处获取会有问题，9:00,10:00,11:00,在9点开赛，10点半结束取的是10点的
+			}
+			
+			$timediff = (int) oo::$config['jbsnew']['timediff'];//与北京时间时差
+			/**
+			 *  修复当前时刻有多场比赛正在进行中,获取开赛时间相同问题,没有考虑比赛跨天情况
+			 *
+			 * @author WadeYu
+			 */
+			if( isset( $param['param']['gametime'] ) && (oo::$config['sid'] == 57) ){
+				$aHi = explode( ':', $param['param']['gametime'] );
+				$aHi[0] = $aHi[0] + $timediff;
+				$hi = $aHi[0] . $aHi[1];
+				if( in_array( $hi, (array) oo::$config['mttmatchnew'][$mtype]['startTime'] ) ){
+					$sigTime = strtotime( 'today' ) + $aHi[0] * 3600 + $aHi[1] * 60;
+				}
+			}
+
+			$aRankInfo = oo::matchnew()->getRankInfo( $rank, $sigTime, $mtype );
+			if (oo::$config['mttmatchnew'][$mtype]['awardmethod']) {
+				$aTable = oo::tables()->getTableById($tid, TRUE, array('svid'));
+				$svid = functions::uint($aTable['svid']);
+				if(oo::matchnew()->isMTTSignOpt($mtype)){
+					!$sigTime && $times = oo::matchnew()->getSignUpTime($mid, $svid, $sigTime);
+				}else{
+					$timeTips1 = strtotime(ocache::mttsig()->get("$svid|$mid"));
+					$timeTips2 = strtotime(ocache::mttsig()->get("delaymtt|$svid|$mid"));      
+ 					$times = max($timeTips1,$timeTips2);
+					if($times >time()+3600 * oo::matchnew()->getHourDiff())$times = min($timeTips1,$timeTips2);
+				}
+				$times -= ((oo::matchnew()->getHourDiff())*3600);
+				$times = $sigTime ? $sigTime : $times;
+				$rewardArr = oo::matchnew()->getRewardRank($mtype, $times, $langtype);
+				foreach ((array)$rewardArr as $k2 => $v2) {
+					$rArr[$k2][0] = $v2[0] ? $v2[0] : 0;
+					$rArr[$k2][1] = $v2[1] ? $v2[1] : '';
+					$rArr[$k2][2] = 0;
+					$rArr[$k2][3] = 0;
+					$rArr[$k2][4] = $v2[2] ? 1 : 0;
+					$rArr[$k2][5] = $v2[2] ? $v2[2] : 0;
+				}
+				$config['mttrank'] = $rArr;
+			}
+			else{
+				$config['mttrank'] = oo::$config['mttmatchnew'][$mtype]['reward'];
+			}
+
+            $wmode = 332;
+			$type = 0;
+			$mttCount = oo::matchnew()->getMTTCount( $mtype, $sigTime );//此次比赛玩家数
+			oo::lc()->sendEvent( $sid, $mid, 'jbs', array( date( 'Hi', $sigTime ) . '-参赛人数' => 1 ) );
+		}
+
+		/**
+		 * 更下面的strcmp( $aRankInfo['uid'], $mid ) == 0判断里，处理的$rank受$config['mttrank']限制
+		 * 所以提前增加活动开关判断
+		 * @author KiraPeng
+		 */
+		if( strcmp( $aRankInfo['uid'], $mid ) == 0 ){
+			//开关：act[aid]_mttRank，在model中加mttRank()方法
+			BY::actExecFun('mttRank', array('mid'=>$mid, 'sid'=>$sid, 'rank'=>$rank, 'mtype'=>$mtype));
+		}
+		
+		if( !array_key_exists( $rank, (array)$config['mttrank'] ) ){
+			$oldRet = array( 'result' => 1, 'money' => 0, 'mttcount' => $mttCount, 'type' => $type );
+			if (in_array($sid,array(143)) && oo::$config['act538'] && $mtype==9999) {
+				$rewname = oo::act(538, oo::$config['sid'])->sendPrizeRange($mid, $rank, $send = false);
+				$oldRet['rewname'] = $rewname;
+			}
+			oo::logs()->debug(date("Y-m-d H:i:s") . " mid " . $mid. " rewname1 " . $rewname. " mtype " . $mtype . " rank:". $rank . json_encode($oldRet).'-cfgrank:'.json_encode($config['mttrank']), "gameshiwu.txt"); 
+			return $this->genRet( $param['mid'], $oldRet );
+		}
+
+		$chips = (int) $config['mttrank'][$rank][0];
+		$chips = (oo::$config['blowup'] > 1) ? $chips * oo::$config['blowup'] : $chips;
+		(oo::$config['deMttReward'] == 1) && $chips = 0; //德语圣诞淘金赛
+
+		$popup = 0; // 是否显示联系方式表单
+		$rewname = ''; // 奖励
+
+		if( strcmp( $aRankInfo['uid'], $mid ) == 0 ){//如果确实是该用户获得该排名，给奖
+			if(($wmode != 332) && ($chips > 0) && !in_array($sid, array(144, 197, 232, 447))){//wmode == 332的时候，在proc中进行处理，此处常常写日志不成功
+				if (isset(oo::$config['act538']) && oo::$config['act538']) { //读取活动配置
+					$desc = oo::act(538, $sid)->cfg['reward'][$rank]['desc'];
+					$chips = trim(preg_replace('/\,|(\+.+)/i', '', $desc));
+				}
+				!(in_array($sid,array(143,104))) && oo::logs()->addWin( $mid, ( ($wmode > 0) ? $wmode : 173 ), 0, $chips, $rank, '', false );
+			}
+			$config['mttrank'][$rank][1] && oo::logs()->addWin( $mid, 329, 0, $rank, $config['mttrank'][$rank][1], $config['mttrank'][$rank][1], false );
+			if (oo::$config['mttmatchnew'][$mtype]['awardmethod']){//有动态奖池
+				$rewname = ( $config['mttrank'][$rank][1] ) ? $config['mttrank'][$rank][1] : ''; // 非筹码奖励
+			}
+			else{
+				$rewname = isset( $config['mttrank'][$rank][0] ) ? $config['mttrank'][$rank][0] : ''; // 筹码奖励
+				$rewname = (oo::$config['blowup'] > 1) ? $rewname * oo::$config['blowup'] : $rewname;
+			}
+	
+			if(oo::$config['matchOpt'] && $isChampionship && isset($config['mttrank'][$rank][3], $config['mttrank'][$rank][4])){//锦标赛增加50W场, 奖励优化，前20名发放道具(改到proc.php中发放，此处经常发放不成功)
+				$ddcard = (int)$config['mttrank'][$rank][3];//道具
+				$ddcardNum = (int)$config['mttrank'][$rank][4];//数量
+				$return['cardNum'] = 1;//$ddcardNum;  新配置已经默认生成0，但as还没同步到其他平台，所以这里写死1暂时兼容，新版本已经用新接口了
+				oo::setLang( $langtype ); //设置语言文件
+				$return['cardName'] = ($ddcard && isset(lang::$property[$ddcard])) ? (string) lang::$property[$ddcard][0] : '';
+			}
+			if(oo::$config['matchOpt'] && $isChampionship){
+				if($bagid = $config['mttrank'][$rank][5]){ //发礼包
+					$bagInfo = oo::bag(359)->get($bagid);
+					$temp = array();
+					if(is_array($bagInfo) && ! empty($bagInfo['data'])){
+						foreach($bagInfo['data'] as $bval){
+							$temp[] = $bval['name'];
+						}
+					}
+					$return['cardName'] = (! empty($temp)) ? implode('+', $temp) : '';
+					
+				}
+			}
+
+			if( $rank == 1 ){//當第一名出現時，預示著比賽已經結束
+				if( isset( oo::$config['openjinbiao'] ) && (oo::$config['openjinbiao'] == 1) && in_array( $mtype, (array) oo::$config['mttmatchnew_mtype'] ) ){//新版淘金赛
+					oo::matchnew()->rankdelay( $sigTime, $mtype, 1 );//设置排行榜延时2分钟显示
+					oo::matchnew()->setMTTjbsSigtime( $sigTime, $mtype );//保存比赛时间
+					oo::matchnew()->setMttEndTime( $sigTime, $mtype ); //保存比赛结束时间
+					$popup = (int) oo::$config['mttmatchnew'][$mtype]['popup']; //话费弹框
+				}else{
+					oo::match()->rankdelay( $event, 1 );//设置排行榜延时2分钟显示
+					oo::match()->recordTop1( $mid );
+				}
+			}
+
+			if( oo::$config['sid'] == 67 && isset( oo::$config['openjinbiao'] ) && (oo::$config['openjinbiao'] == 1) && in_array( $mtype, (array)oo::$config['mttmatchnew_mtype'] ) ){
+				if( in_array( date( 'Hi', $sigTime ), array( '1300', '1400', '2200', '2230', '2300', '2330' ) ) ){//13：00，14：00，15：00，22：00，22：30，23：00，23：30
+					$popup = 0;//印尼做了弹框后，$popup=1
+				}
+			}
+
+			(in_array( $mtype, (array) oo::$config['mttmatchnew_mtype'] )) && oo::logs()->limit( $mtype, 578, $sigTime ) && oo::matchnew()->setMTTjbsSigtime( $sigTime, $mtype );//保存比赛时间
+			(!in_array( $mtype, (array) oo::$config['mttmatchnew_mtype'] )) && oo::match()->setMttRankLogs( $mid, array( 'sigtime' => $nowMatch, 'rank' => $rank, 'type' => $type ) ); //记录用户淘金赛日志
+			
+		}
+		$return['isProp'] = 0;
+		$return['result'] = 1;
+		$return['mttcount'] = $mttCount;
+		$return['type'] = $type;
+		$return['popup'] = $popup;
+		$return['rewname'] = $rewname;
+
+		$awardmethod = (int)oo::$config['mttmatchnew'][$mtype]['awardmethod'];//奖励方式 0无动态奖池 1有动态奖池,不同时奖励金币和奖券 2同时奖励
+		$ticketvalue = (int)oo::$config['mttmatchnew'][$mtype]['ticketvalue'];//设定值
+		$giftBagId = (int)oo::$config['mttmatchnew'][$mtype]['giftBagId']; //礼包ID
+		$rewardNum = 0;
+		if( $awardmethod > 0 && $ticketvalue > 0 && $giftBagId >0 ){
+			$cMoney = oo::matchnew()->currentRewardInfo($mtype, $sigTime);
+			$cMoney = $cMoney['countMoney']; //总奖池
+			$rewardNum = floor($cMoney / $ticketvalue); //奖券奖励人数
+		}
+		if(oo::$config['mttRealCard']){
+			//判断是否有实体道具卡奖励
+			if ($awardmethod && $rewardNum>0) {
+				$aNewMttRealCard = oo::usertool()->getNewMttRealCard();
+                oo::logs()->debug(date("Y-m-d H:i:s") . ' _line_ ' . __LINE__ . ' mid ' . $mid . " rank " . $rank . ' rewardNum ' . $rewardNum, 'rankrewardNum.txt');
+				if ($rank <= $rewardNum && !empty($aNewMttRealCard[$mtype])) {
+					$return['material'] = 1;
+					$return['realprop'] = $aNewMttRealCard[$mtype];
+				}
+			}else{
+				$aMTTCard = oo::usertool()->getNewMttRealCard();
+				$iBag = (int)oo::$config['mttmatchnew'][$mtype]['reward'][$rank][5];
+				if($iBag){
+					$aBag = oo::bag(359)->get($iBag);
+					foreach ((array)$aBag['data'] as $k => $v) {
+						if($v['type'] == 'prop' && in_array($v['val'] ,$aMTTCard)){
+							$return['material'] = 1;
+							$return['realprop'] = (int)$v['val'];
+							break ;
+						}
+					}
+				}
+			}
+		}
+		
+		$svid = oo::matchnew()->getSvrId($sigTime, $mtype);
+		if(!$return['isring'] && oo::$config['act824_fixedPool'] && $awardmethod == 0) {//固定奖池奖励参赛卷时也不显示名次
+			$rewardNum = (int)ocache::mttsig()->get(okey::fixedOverNum($svid, $sigTime));//奖励相同的人数
+			$fixedPoolIsRing = $rewardNum ? 1 : 0;
+		}
+		if(oo::$config['newRewardDialog'] && ($awardmethod == 1 || $fixedPoolIsRing == 1) && $rewardNum > 0 && ocache::mttsig()->get("MONEYRING|{$svid}|{$sigTime}")){
+			if ($rank <= $rewardNum) {
+				$return['isring'] = 1;
+				$return['isshowwin'] = 1; 
+			}
+		}
+		
+		
+        oo::logs()->debug(date("Y-m-d H:i:s") . " mid " . $mid. " rewname " . $rewname. " mtype " . $mtype . " rank:". $rank . json_encode($return), "gameshiwu.txt"); 
+		oo::logs()->debug($return,'act538testgo');
+		return $this->genRet( $param['mid'], $return );
+	}
+
+	/**
+	 * 淘金赛登陆退出时间
+	 *
+	 *  @param type $param
+	 *  @return type
+	 */
+	public function MTTTime( $param ){
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		if(SERVER_TYPE == 'demo') return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		$mid = (int) $param['mid'];
+		$sid = (int) $param['sid'];
+		$langtype = (int) $param['langtype'];
+		$type = (int) $param['param']['type'];  //0为进入 1为退出
+		$wmode = ($type == 1) ? 320 : 319;
+		if( !oo::logs()->limit( $mid, 566, $wmode ) ){
+			return $this->genRet( $param['mid'], array( 'limt 超时' ) );
+		}
+		$flag = oo::logs()->addWin( $mid, $wmode, 0, 1, time(), '', false ) ? 1 : 0;
+		return $this->genRet( $param['mid'], $flag );
+	}
+
+	/**
+	 * sina淘汰赛第1名赢取10元话费活动数据 mtype=9999午夜场，9998淘汰赛  11话费锦标赛
+	 *
+	 * @param Array $param
+	 * @return Array
+	 */
+	public function sngpagecheck( $param ){
+		return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+	}
+
+	/**
+	 * 淘金赛比赛类型
+	 *
+	 *  @param type $param
+	 *  @return type
+	 */
+	public function getMTTMType( $param ){
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+
+		$mid = (int) $param['mid'];
+		$sid = (int) $param['sid'];
+		$langtype = (int) $param['langtype'];
+		$now = time();
+		$tomorrow = strtotime( 'tomorrow' );
+		$timediff = (int) oo::$config['jbsnew']['timediff'];//与北京时间时差
+
+		if( in_array( $langtype, array( 11 ) ) && (!oo::$config['matchTimeDiffReset']) ){//印尼
+			$timediff = 3600;
+		}
+		if( in_array( $langtype, array( 5, 6 ) ) ){//葡语, 西语
+			$timediff = 0;
+		}
+		$aRet_NotSign = $aRet_Sign = $aRet_played = $aRet_TopNotSign = $aRet_TopSign = $aRet_Topplayed = $aMttstatus = $aMTTCount = $aCurrrentPlayer = $aMTTSig = array( );
+
+
+		if(oo::$config['matchOpt']){//锦标赛增加50W场
+			$matchArr = array();
+			foreach((array)oo::$config['mttmatchnew_mtype'] as $v){
+				$matchArr[$v] = oo::$config['mttmatchnew'][$v];
+			}
+			oo::$config['mttmatchnew'] = $matchArr;//按照给定type排序
+		}
+        
+		//ATOP锦标赛置顶，开关未打开时不显示
+        $matchArr = $TopsArr = array();
+		foreach ((array) oo::$config['mttmatchnew_mtype'] as $v) {
+			if (in_array($v, array(50,54,55) ) ) {
+				oo::$config['act866_primary'] && $TopsArr[$v] = oo::$config['mttmatchnew'][$v];
+			} elseif ($v == 51) {
+				if (oo::$config['act866_final']) {
+					if (oo::act(866, $sid)->ifFinalDate()) {
+						$TopsArr[$v] = oo::$config['mttmatchnew'][$v];
+					}
+				}
+			}elseif($v == 68){
+				if (oo::$config['act824_mtt68']){
+					$TopsArr[$v] = oo::$config['mttmatchnew'][$v];
+				}
+			} else {
+				$matchArr[$v] = oo::$config['mttmatchnew'][$v];
+			}
+		}
+		oo::$config['mttmatchnew'] = $TopsArr + $matchArr;
+		
+		if(($sid == 144) && ( (date('w') != 1) || (date('Hi') > 2000) )){//波兰周1添加超大场 
+			unset(oo::$config['mttmatchnew'][40]);
+		}
+
+		foreach ((array)oo::$config['mttmatchnew'] as $mtype => $v) {//去掉开赛时间为空的
+			if (!isset(oo::$config['jbsnew']['newserver'][$mtype])) {
+				unset(oo::$config['mttmatchnew'][$mtype]);
+			}
+			else{
+				foreach ((array)oo::$config['jbsnew']['newserver'][$mtype] as $key => $value) {	
+					if (!$value['startTime'][0]) {
+						unset(oo::$config['mttmatchnew'][$mtype]);
+					}
+				}
+
+				if(oo::matchnew()->checkMttOffline($mtype,$param)) {
+					unset(oo::$config['jbsnew']['newserver'][$mtype], oo::$config['mttmatchnew'][$mtype]);//符合下线策略条件，下线
+				}
+
+				if($v['isLoop']){//老接口不返回比赛轮播
+					unset(oo::$config['mttmatchnew'][$mtype]);
+				}
+			}
+		}
+
+		$aMttKeys = array( );
+		foreach( (array) oo::$config['mttmatchnew'] as $key => $val ){//活动比赛
+			$mtype = $key;
+			$sigTime = oo::matchnew()->getSigTime( $mtype );
+			$aMttKeys[$sigTime . '|' . $mtype] = $mtype;
+		}
+
+		foreach( (array) oo::$config['mttmatchnew'] as $key => $val ){//活动比赛-- 正在比赛
+			$mtype = $key;
+			foreach( (array) $val['startTime'] as $hour ){
+				$sigTime = oo::matchnew()->getSigTimebyHour( $hour );
+
+				if( abs( time() - $sigTime ) >= 2 * 60 * 60 ){ //排除两小时之前的比赛
+					continue;
+				}
+				$aMttKeys[$sigTime . '|' . $mtype] = $mtype;
+			}
+		}
+		$aMtt = oo::matchnew()->getMultiMtt( $mid, $aMttKeys ); // 比赛信息
+
+		oo::setLang( $langtype ); //设置语言文件
+
+		foreach( (array) oo::$config['mttmatchnew'] as $key => $val ){//活动比赛
+			$mtype = $key;
+			$sigTime = oo::matchnew()->getSigTime( $mtype );
+
+            if (!oo::$config['act866'] && in_array($mtype, array(50, 51,55,54)))continue;
+            //if (oo::$config['act870'] && oo::matchnew()->isMTTGray($mtype))continue;
+            if(PRODUCTION_SERVER && oo::$config['act824_mtt2rule'] && in_array($key, array(58, 59, 60, 61, 62))) {//pc外网先屏蔽
+            	continue;
+            }
+
+            if(PRODUCTION_SERVER && oo::$config['act824_mttRuleOpt']) {//pc外网先屏蔽 配置版,开关配置为mtype
+				$mtypesArr = explode(',', oo::$config['act824_mttRuleOpt']);
+				if(in_array($key, $mtypesArr)){
+					continue;
+				}
+			}
+			
+			$stTime = date( 'Hi', $sigTime - $timediff );
+			$gamePreTime = $sigTime - 5 * 60;//提前5分钟进场
+
+			$svid = oo::matchnew()->getSvrId( $sigTime, $mtype );
+			$mttstatus = $aMtt["$svid|mttgamestatus"]; // 比赛状态
+			$aMatchType = oo::matchnew()->getMatchType( $mid, $sigTime, $mtype, $aMtt );
+
+			$sigup = (int) $aMatchType['sigup'];
+			$mtype = (int) $aMatchType['mtype'];
+			$gameserver = $aMatchType['gameserver'];
+			$signserver = $aMatchType['signserver'];
+
+			$todayUserSig = $aMtt[okey::mkmttusercnt( $sigTime, $svid )];//此次比赛玩家数
+			$currrentPlayer = $aMtt["$svid|mttgameusernum"];//现在在玩人数
+			$pKey = oo::matchnew()->setMTTjbsPlayer( $sigTime, $mtype, $currrentPlayer, $aMtt[okey::mkMTTjbsPlayer( $sigTime, $mtype )] );//保存某个场次的参赛人数
+			$pKey && ($aPlayer[$pKey] = $currrentPlayer);
+			$flag = ( ( ($now + 5 * 60) >= $sigTime ) && ( $now < $sigTime ) ) ? 1 : 0;//是否在5分钟内
+			
+			if(oo::$config['act866'] && in_array($mtype, array(50, 51) ) )$val['signMoney'] = oo::act(866,$sid)->getSignMoney($mtype);
+			
+			$aTemp = array( 'mtype' => $mtype, //类型
+				'tips' => ( ($sid == 67) && (in_array( $stTime, (array) $val['startTime2'] ))) ? $val['tips2'] : $val['tips'], //比赛标题
+				'picUrl' =>  oo::$config['OpenNewMTTCMS']?'mttnew/'.$val['pc_picurlnew']:$val['picUrl'], //图片url
+				'signStatus' => $sigup, //状态 0:未 1:已
+				'signMoney' => oo::$config['blowup'] > 1 ? $val['signMoney'] * oo::$config['blowup'] : $val['signMoney'], //费
+				'signCount' => $todayUserSig, //人数
+				'curply' => $currrentPlayer, //当前在玩人数
+				'timeTips' => date( 'H:i', $sigTime - $timediff ), //时间提示（文字）
+				'gametime' => array( date( 'H:i', $gamePreTime - $timediff ), date( 'H:i', $sigTime - $timediff ) ),
+				'flag' => $flag, //是否在5分钟内
+				'lasttime' => abs( $now - $sigTime ), //比赛倒计时
+				'gameserver' => $gameserver,
+				'signserver' => $signserver,
+				'reward' => oo::$config['mttmatchnew'][$mtype]['rewardstr'],
+				'mttstatus' => ($mttstatus != 1) ? $flag : (( $now < $sigTime ) ? $flag : 2), //2正在比赛，1 5分钟内准备比赛，0其他
+				'id' => $key,
+			);
+			if(oo::$config['act866']){
+				$aTemp['sigTime'] = $sigTime;
+			}
+			
+			if($sid == 57 && $mtype==12){
+				$aTemp['reward'][0] = str_replace('100000','100K',$aTemp['reward'][0]);
+			}
+			
+			$aTemp['tipsBold'] = in_array( oo::$config['sid'], array(101)) && in_array($mtype, array(26) ) ? true : false;//德语3M场加粗
+			
+
+			if(oo::$config['matchOpt']){//比赛场优化
+				$aReward = (array)oo::$config['mttmatchnew'][$mtype]['reward'];
+				if($aReward){
+					foreach($aReward as $k=>$v){
+						if($v[5]){ //发礼包
+							$bagInfo = oo::bag(359)->get($v[5]);
+							$temp = array();
+							if(is_array($bagInfo) && ! empty($bagInfo['data'])){
+								foreach($bagInfo['data'] as $bval){
+									$temp[] = $bval['name'];
+								}
+							}
+							if(oo::$config['act866'] && in_array($mtype, array(50, 51, 54, 55))){
+								if(empty($bagInfo)){
+									$aTemp['rewardName'][(int)$k-1] = '';
+								}else{
+									$aTemp['rewardName'][(int)$k-1] = $bagInfo['name'];
+								}
+							}else{
+								$aTemp['rewardName'][(int)$k-1] = ! empty($temp) ? implode('+', $temp) : '';
+							}
+							continue;
+						}elseif( oo::$config['act866'] && in_array($mtype, array(51))){
+							$aTemp['rewardName'][(int)$k-1] = '';
+						}
+						
+						if (in_array($v[3], array(379, 380, 384, 387))) {//pc不支持实物券 暂时屏蔽
+							continue;
+						}
+						if($v[3] && $v[4]){
+							$ddcard = (int)$v[3];
+							$aTemp['rewardName'][(int)$k-1] = isset(lang::$property[$ddcard]) ? (string) lang::$property[$ddcard][0] : '';
+						}
+					}
+				}
+			}
+
+			if( $sigup == 1 ){//
+				if( ($sid == 57) && in_array( $mtype, array( 33, 34 ) ) ){ //精英联赛置顶
+					$aRet_TopSign[] = $aTemp;
+				}else{
+					$aRet_Sign[] = $aTemp;
+				}
+			}else{
+				if( ($sid == 57) && in_array( $mtype, array( 33, 34 ) ) ){ //精英联赛置顶
+					$aRet_TopNotSign[] = $aTemp;
+				}else{
+					$aRet_NotSign[] = $aTemp;
+				}
+			}
+		}
+        
+		foreach( (array) oo::$config['mttmatchnew'] as $key => $val ){//活动比赛-- 正在比赛
+			$mtype = $key;
+			$k = 100;
+            
+            if (!oo::$config['act866'] && in_array($mtype, array(50, 51,54,55)))continue;
+			if(PRODUCTION_SERVER && oo::$config['act824_mtt2rule'] && in_array($key, array(58, 59, 60, 61, 62))) {//pc外网先屏蔽
+            	continue;
+            }
+
+            if(PRODUCTION_SERVER && oo::$config['act824_mttRuleOpt']) {//pc外网先屏蔽 配置版,开关配置为mtype
+            	$mtypesArr = explode(',', oo::$config['act824_mttRuleOpt']);
+            	if(in_array($key, $mtypesArr)){
+            		continue;
+            	}
+            }
+			
+			$nowMatchSigTime = 0;
+			if( ($sid == 57) && in_array( $mtype, array( 33, 34 ) ) ){ //精英联赛
+				$nowMatchSigTime = oo::matchnew()->getNowMatchTime( $mtype );
+			}
+
+			foreach( (array) $val['startTime'] as $hour ){
+				$sigTime = oo::matchnew()->getSigTimebyHour( $hour );
+				$stTime = date( 'Hi', $sigTime - $timediff );
+
+				if( abs( time() - $sigTime ) >= 2 * 60 * 60 ){ //排除两小时之前的比赛
+					continue;
+				}
+
+				$gamePreTime = $sigTime - 5 * 60;//提前5分钟进场
+
+				$aMatchType = oo::matchnew()->getMatchType( $mid, $sigTime, $mtype, $aMtt );
+
+				$sigup = (int) $aMatchType['sigup'];
+				$mtype = (int) $aMatchType['mtype'];
+				$gameserver = $aMatchType['gameserver'];
+				$signserver = $aMatchType['signserver'];
+				$svid = oo::matchnew()->getSvrId( $sigTime, $mtype );
+				$todayUserSig = $aMtt[okey::mkmttusercnt( $sigTime, $svid )];//此次比赛玩家数
+				$currrentPlayer = $aMtt["$svid|mttgameusernum"];//现在在玩人数
+				$pKey = oo::matchnew()->setMTTjbsPlayer( $sigTime, $mtype, $currrentPlayer, $aMtt[okey::mkMTTjbsPlayer( $sigTime, $mtype )] );//保存某个场次的参赛人数
+				$pKey && ($aPlayer[$pKey] = $currrentPlayer);
+				$flag = ( ( ($now + 5 * 60) >= $sigTime ) && ( $now < $sigTime ) ) ? 1 : 0;//是否在5分钟内
+				
+				if(oo::$config['act866'] && in_array($mtype, array(50, 51) ) )$val['signMoney'] = oo::act(866,$sid)->getSignMoney($mtype);
+				
+				$aTmp = array( 'mtype' => $mtype, //类型
+					'tips' => ( ($sid == 67) && (in_array( $stTime, (array) $val['startTime2'] ))) ? $val['tips2'] : $val['tips'], //比赛标题
+					'picUrl' =>  oo::$config['OpenNewMTTCMS']?'mttnew/'.$val['pc_picurlnew']:$val['picUrl'], //图片url
+					'signStatus' => 1, //状态 0:未 1:已
+					'signMoney' => oo::$config['blowup'] > 1 ? $val['signMoney'] * oo::$config['blowup'] : $val['signMoney'], //费
+					'signCount' => $todayUserSig, //人数
+					'curply' => $currrentPlayer, //当前在玩人数
+					'timeTips' => date( 'H:i', $sigTime - $timediff ), //时间提示（文字）
+					'gametime' => array( date( 'H:i', $gamePreTime - $timediff ), date( 'H:i', $sigTime - $timediff ) ),
+					'flag' => $flag, //是否在5分钟内
+					'lasttime' => abs( $now - $sigTime ), //比赛倒计时
+					'gameserver' => $gameserver,
+					'signserver' => $signserver,
+					'reward' => oo::$config['mttmatchnew'][$mtype]['rewardstr'],
+					'mttstatus' => ( $now < $sigTime ) ? $flag : 2, //2正在比赛，1 10分钟内准备比赛，0其他
+					'id' => $mtype . $k,
+				);
+				if(oo::$config['act866']){
+					$aTmp['sigTime'] = $sigTime;
+				}
+				
+				if($sid == 57 && $mtype==12){
+					$aTmp['reward'][0] = str_replace('100000','100K',$aTmp['reward'][0]);
+				}
+
+				$aTmp['tipsBold'] = in_array( oo::$config['sid'], array(101)) && in_array($mtype, array(26) ) ? true : false;//德语3M场加粗
+				$k++;
+				if( ($sid == 57) && in_array( $mtype, array( 33, 34 ) ) ){ //精英联赛
+					$aTmp['mttstatus'] = ($sigTime < $nowMatchSigTime) ? 3 : $aTmp['mttstatus'];
+					if( $sigTime == $nowMatchSigTime ){
+						$aTmp['mttstatus'] = (oo::matchnew()->getmttstatus( 0, $sigTime, $mtype ) == 1) ? 2 : 3;
+					}
+					$aTmp['id'] = $sigTime;
+					$aRet_Topplayed[] = $aTmp;
+				}else{
+					$aRet_played[] = $aTmp;
+				}
+			}
+		}
+		
+		$aRet = array_merge( $aRet_TopNotSign, $aRet_TopSign, $aRet_Topplayed, $aRet_NotSign, $aRet_Sign, $aRet_played );
+		
+		
+		//对ATOP锦标赛做过滤处理
+		if(oo::$config['act866']){
+			$aRet = oo::act(866, $sid)->filterData($aRet);
+		}
+		
+		if( in_array( $sid, array( 143, 144 ) ) ){ //波兰、意大利将千万锦标赛置顶
+			foreach( $aRet as $k => $v ){
+                if( in_array( $v['mtype'], array( 31, 39,40 ) ) ){
+					$aTmp = $aRet[$k];
+					unset( $aRet[$k] );
+					array_unshift( $aRet, $aTmp );
+				}
+			}
+		}
+		if (in_array($sid, array(104,57))) { //不显示正在进行的比赛
+			foreach ($aRet as $k => $v) {
+				if ($v['mttstatus'] == 2) {
+					unset($aRet[$k]);
+				}
+				if(($sid == 57) && $v['mtype'] == 12 &&  (time() - strtotime('2015-06-24 00:00:00')>0)){//下掉10W实物锦标赛
+					unset( $aRet[$k]);
+				}
+			}
+			$aRet = array_values($aRet);
+		}
+       
+
+		$aPlayer && ocache::event()->setMulti( $aPlayer, 24 * 60 * 60 );//保存某个场次的参赛人数
+
+		return $this->genRet( $param['mid'], $aRet );
+	}
+
+	/**
+	 * 保存淘金赛比赛类型
+	 *
+	 * @param Array $param
+	 * @return Array
+	 */
+	public function setMTTMtype( $param ){
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$mid = (int) $param['mid'];
+		$sid = (int) $param['sid'];
+		$langtype = (int) $param['langtype'];
+		$mtype = (int) $param['param']['mtype'];
+		if( isset( oo::$config['openjinbiao'] ) && (oo::$config['openjinbiao'] == 1) ){//新版淘金赛
+			$flag = oo::callback()->add('oo::matchnew()->setMTTMtype', array( $mid, $mtype ) );
+			return $this->genRet( $param['mid'], array( 'result' => $flag ) );
+		}
+		return $this->genRet( $param['mid'], array( 'result' => -1 ) );
+	}
+	/**
+	 * 淘金赛发冠军通知
+	 * @param $tid 桌子id
+	 * @param $rankType 0 日赛 1周赛 2活动赛
+	 * @param $mid
+	 */
+	public function sendChampion( $param ){
+		if( !(in_array( oo::$config['sid'], array(117 ) ) && (oo::$config['champion'] == 1)) ){
+			return false;
+		}
+		$tid = $param['param']['tid'];
+		$rankType = $param['param']['rankType'];
+		$mid = $param['param']['mid'];
+		$obj = new stdClass();
+		$aTable = oo::tables()->getTableById( $tid, true, array('tname') );
+		if( isset( oo::$config['purplewine'] ) && (oo::$config['purplewine'] == 1) ){
+			$rankType = 0;
+		}
+		$obj->tname = $aTable['tname'];
+		$obj->type = 7;
+		$topRanks = oo::match()->getMttInfoByrank( 1, $rankType );
+		$topmid = $topRanks['uid'];
+		if( $mid == $topmid ){
+			$objUserInfo = oo::minfo()->getMinfo($topRanks['uid'], array('mnick', 'micon', 'sid') );
+			$obj->mnick = $objUserInfo['mnick'];
+			$obj->micon = $objUserInfo['micon'];
+			$obj->matchType = '淘金赛冠军';
+			$obj->prize = (($rankType == 0) ? '500万筹码+头衔' : '1000万筹码+头衔');
+			//发小喇叭
+			$sendret = oo::udp()->sendaSynchronousMsg( 100, $param['mid'], $param['mid'], $obj );
+		}
+		return $this->genRet( $mid, array( ) );
+	}
+
+	/**
+	 * 刮刮卡活动
+	 */
+	public function guagua( $param ){
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$mid = (int) $param['mid'];
+		$aRet = (array) oo::model( 'EraseCardHappy' )->getFlashParam( $mid );
+		return $this->genRet( $mid, $aRet );
+	}
+
+	/**
+	 *
+	 * 擂台赛页面
+	 * mtype  锦标赛 29
+	 */
+	public function sigRingGame( $param ){
+		$mid = (int) $param['mid'];
+		if( !$this->auth( $param, 1 ) ){
+			return $this->genRet( $mid, array( 'result' => -1 ) );
+		}
+		$sid = (int) $param['sid'];
+		$mtype = (int) $param['param']['mtype'];//29 是擂台赛
+		$rank = (int) $param['param']['rank'];//排名
+		if( !in_array( $mtype, (array) oo::$config['ringMttype'] ) ){//不在这里面
+			return $this->genRet( $mid, array( 'result' => -3, 'desc' => '这场不是擂台赛' ) );
+		}
+		if( !in_array( $rank, array( 1 ) ) ){//不是第一名
+			return $this->genRet( $mid, array( 'result' => -4, 'desc' => '名次不对' ) );
+		}
+		$aRet = oo::matchnew()->MTTSignUp( $mid, $sid, $mtype );
+		if( $aRet['result'] != 1 ){//不成功的
+			$aRet['desc'] = '失败';
+			oo::logs()->debug( array( $aRet['result'], time() ), 'ring_fail.txt' );
+		}else{
+			$sigTime = oo::matchnew()->getSigTime( $mtype );
+			$stime = date( 'H:i', $sigTime );
+			$aRet['desc'] = "恭喜您获得第二轮参赛资格，请{$stime}准时参加";
+		}
+		return $this->genRet( $mid, $aRet );
+	}
+
+	/**
+	 *
+	 * 擂台赛初始化
+	 * @param array $param
+	 */
+	public function ringGame( $param ){
+		$mid = (int) $param['mid'];
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $mid, array( 'result' => -1 ) );
+		}
+		$hi = date( 'Hi' );
+		$now = time();
+		$mtype = (int) oo::$config['ringMttype'];
+		$sigTime = oo::matchnew()->getSigTime( $mtype );
+		$mttstatus = oo::matchnew()->getmttstatus( 0, $sigTime, $mtype ); // 比赛状态
+		$aMatchType = oo::matchnew()->getMatchType( $mid, $sigTime, $mtype );
+		$aRet['mtype'] = $mtype;
+		$aRet['gameserver'] = $aMatchType['gameserver'];
+		$aRet['signserver'] = $aMatchType['signserver'];
+		$flag = ( ( ($now + 5 * 60) >= $sigTime ) && ( $now < $sigTime ) ) ? 1 : 0;//是否在5分钟内
+		$aRet['mttstatus'] = ($mttstatus != 1) ? $flag : (( $now < $sigTime ) ? $flag : 2);//2正在比赛，1 5分钟内准备比赛，0其他
+		$aRet['flag'] = $flag;//是否在五分钟内
+		$aRet['lasttime'] = abs( $now - $sigTime ); //比赛倒计时
+		$aRet['signStatus'] = $aMatchType['sigup'];//
+		$aRet['curply'] = oo::matchnew()->getCurrentPlayer( $sigTime, $mtype );//现在在玩人数
+		oo::matchnew()->setMTTjbsPlayer( $sigTime, $mtype, $aRet['curply'] );//保存某个场次的参赛人数
+		$aRet['ttsstatus'] = 0;
+		foreach( (array) oo::$config['ringttsTime'] as $ttsTime ){
+			$sTime = str_replace( ':', '', $ttsTime[0] );
+			$eTime = str_replace( ':', '', $ttsTime[1] );
+			if( $hi >= $sTime && $hi <= $eTime ){
+				$aRet['tips1'] = "正在比赛中";
+				$aRet['ttsstatus'] = 1;
+				$aRet['ttsserver'] = oo::servers()->getOneServer( 102, true );
+				break;
+			}
+			if( $hi < $sTime ){
+				$aRet['tips1'] = $ttsTime[0] . "开始";
+				break;
+			}
+			if( $hi > $eTime ){
+				$aRet['tips1'] = oo::$config['ringttsTime'][0][0] . "开始";
+			}
+		}
+		if( $aRet['mttstatus'] == 2 ){
+			$aRet['tips2'] = "正在比赛中";
+		}else{
+			$aRet['tips2'] = date( 'H:i', $sigTime ) . "开始";
+		}
+		return $this->genRet( $mid, $aRet );
+	}
+
+
+	public function getDeddyInfo( $param ){
+
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $mid, array() );
+		}
+		$mid = (int) $param['mid'];
+		$maxTid = (int)$param['param']['tid'];
+		$svid = (defined('SERVER_TYPE') && in_array( SERVER_TYPE, array('vm','demo') ) ) ? 19665 : 520;
+
+		if($maxTid < 1){
+			return $this->genRet( $mid, array() );
+		}
+		$aKey = array();
+		$string = ocache::gt()->get($maxTid);
+		$aTabInfo = functions::unserialize($string);
+		$maxNum = (int)$aTabInfo['tplayernow'];
+		if( ($maxNum < 1) || ($aTabInfo['sngstate'] == 0) ){
+			return $this->genRet( $mid, array() );
+		}
+		for($i=1;$i<=$maxNum;$i++){
+			$aKey[] = $svid.'|'.$maxTid.'|'.$i;
+		}
+		$retTmp = (array)ocache::mttRank()->getMulti($aKey);
+		$list = array();
+		$j = 1;
+		$ret = array();
+		foreach ($retTmp as  $value) {
+			$list = functions::unserialize($value);
+			$aMids[] = $list['uid'];
+			$ret1['list'][$list['uid']][0] = $list['uid'];
+			$ret1['list'][$list['uid']][1] = $list['chips'];
+			$ret1['list'][$list['uid']][3] = $j;
+			$j++;
+		}
+		$aInfo = (array)oo::minfo()->getFieldsMulti( $aMids, array('mnick', 'micon', 'mmiddle'));
+		foreach($aInfo as $k=>$val){
+			$ret1['list'][$k][2] = $val['mnick'];
+			$ret1['list'][$k][4] = $val['micon'] ? $val['micon'] : ($val['mmiddle'] ? $val['mmiddle'] : oo::$config['imagesUrl'].'act/558/avat.jpg');
+			$ret[] = $ret1['list'][$k];
+		}
+		return $this->genRet( $mid, $ret );
+	}
+	/**
+	 *
+	 * 周六夜赛server信息
+	 * @param array $param
+	 */
+	public function getNightRaceSvr($param){
+		$mid = BY::uint($param['mid']);
+		if(!$this->auth($param, 0)){
+			return $this->genRet($mid, array('error' => -1));
+		}
+		$model = oo::act(743);
+		$svid = $model->svid;
+		if(!$svid){//没有配置server信息
+			return $this->genRet($mid, array('error' => -2));
+		}
+		$serverInfo = oo::servers()->getServerInfo($svid);
+		$ret = array(
+			'svid' => $svid,
+			'svip' => (string)$serverInfo['svip'],
+			'svport' => (int)$serverInfo['svport']
+		);
+		return $this->genRet($mid, $ret);
+	}
+	
+	/**
+	 * 获取公会战显示信息
+	 * @param array $param
+	 * @return type
+	 */
+	public function mttGildStatus($param){
+		if( !$this->auth( $param, 0 ) || (!oo::$config['act432_war']) ){
+			return $this->genRet($mid, array());
+		}
+		$mid = (int) $param['mid'];
+		$sid = (int) $param['sid'];
+		$ret = oo::act(432, $sid)->mttGildStatus($mid);
+		return $this->genRet($mid, $ret);
+	}
+	
+	/**
+	 * 获取公会战参数人员的信息
+	 * @param array $param
+	 * @return type
+	 */
+	public function getmttPerson($param){
+		if( !$this->auth( $param, 0 ) || (!oo::$config['act432_war']) ){
+			return $this->genRet($mid, array());
+		}
+		$sid = (int) $param['sid'];
+		$tid = (int)$param['param']['tid'];
+		$ret = oo::act(432, $sid)->getmttPerson($tid);
+		return $this->genRet($mid, $ret);
+	}
+    
+    /**
+     * 新版MTT类型
+     * @param type $param
+     * @return type
+     */
+    public function getNewMTTMType( $param ){
+ 		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$mid = (int) $param['mid'];
+		$sid = (int) $param['sid'];
+		$langtype = (int) $param['langtype'];
+        if(oo::$config['act824_mttlist']){
+			$param['langtype'] = oo::$config['langtype'];
+			$aTabs = oo::matchnew()->getTabs($param);
+
+			$matchInfos = oo::matchnew()->getMTTs($param, true);
+			if(oo::$config['mttHallPreNotice']){
+				$list = $matchInfos['matchList'];
+			}else{
+				$list = $matchInfos;
+			}
+            print_r($list);exit();
+			
+			if(oo::$config['act824_MTTGZ']){//mtt分类标签
+				if(!in_array(oo::$config['sid'], array(93, 117))){//国内的不需要这货
+					foreach ((array)oo::$config['banner'] as $key=>$value) {
+                            if(! $value['pic']) {   //过滤配置为空的图片
+                                unset(oo::$config['banner'][$key]);
+                                continue;
+                            }
+						oo::$config['banner'][$key]['pic']=oo::$config['cdn'].'images/mttnew/'. $value['pic'];
+					}
+					$ret['banner'] = oo::$config['banner'];	
+				}
+				
+				unset($aTabs['list'][0]);
+				$aTabs['list'] = array_values((array)$aTabs['list']);
+				$ret['tabs'] = (array)$aTabs['list'];	
+				$ret['list'] = $list;
+			
+				if(isset($matchInfos['preBrodcast']) && !empty($matchInfos['preBrodcast'])){//赛前广播
+					$ret['preBrodcast'] = (array)$matchInfos['preBrodcast'];					
+				}
+				
+			}  else {
+				$ret = $list;
+			}
+			
+			/*验证延迟报名是否开始*/
+			/*
+	        $x = $y = array();
+			$today = strtotime( 'today' );
+			foreach (oo::$config['mttmatchnew'] as $mtype=>$array) {
+				$delayTime = $array['delayTime'];
+				foreach ((array)$array['startTime'] as $startTime) {
+					$preTime = strtotime(date('Y-m-d ', $today) . substr_replace($startTime, ':', 2, 0) . ':00');
+					//$preTime-= 3600 * oo::matchnew()->getHourDiff();
+					if ((time() > $preTime) && (time() <= ($preTime + $delayTime))) {
+						$mtt = okey::mkmttusercnt($preTime, oo::matchnew()->getSvrId($preTime, $mtype));
+						$num = ocache::mttsig()->get($mtt);
+						if ($num > count($array['reward'])) {
+							$x[$preTime . '_' . $mtype.'_'.date('Y-m-d-H:i:s', $preTime)] = $mtype . '->' . date('Y-m-d H:i:s', $preTime) . '->' . $num;
+						}
+					}
+				}
+			}
+			if($x){
+				foreach ((array)$ret['list'] as $v){
+					$z[$v['sigTime'].'_'.$v['mtype'].'_'.date('Y-m-d-H:i:s', $v['sigTime'])] = $v;
+					$y[$v['sigTime'].'_'.$v['mtype'].'_'.date('Y-m-d-H:i:s', $v['sigTime'])] = array('mtype'=>$v['mtype'],'lasttime'=>$v['lasttime'],'delay'=>$v['delay'],'delayState'=>$v['delayState'],'delayLastTime'=>$v['delayLastTime'],'timeTips'=>$v['timeTips']);
+				}
+				if(!array_intersect(array_keys($x), array_keys($y) ) ){
+					oo::logs()->debug(array($mid, 'mtt出错v2', date('Y-m-d H:i:s'), $x, $y), 'sql.txt');
+					oo::logs()->debug(array($mid, 'mtt出错v2', date('Y-m-d H:i:s'), $x, $z), 'sql1.txt');
+				}
+			}
+			*/
+			/*验证延迟报名是否结束*/
+			return $this->genRet( $param['mid'], $ret);
+        }
+		$now = time();
+		$tomorrow = strtotime( 'tomorrow' );
+		$timediff = (int) oo::$config['jbsnew']['timediff'];//与北京时间时差
+
+		if( in_array( $langtype, array( 11 ) ) && (!oo::$config['matchTimeDiffReset']) ){//印尼
+			$timediff = 3600;
+		}
+		if( in_array( $langtype, array( 5, 6 ) ) ){//葡语, 西语
+			$timediff = 0;
+		}
+ 		$aRet_delay = $aRet_NotSign = $aRet_Sign = $aRet_played = $aRet_TopNotSign = $aRet_TopSign = $aRet_Topplayed = $aMttstatus = $aMTTCount = $aCurrrentPlayer = $aMTTSig = array( );
+
+		if(oo::$config['matchOpt']){//锦标赛增加50W场
+			$matchArr = array();
+			foreach((array)oo::$config['mttmatchnew_mtype'] as $v){
+				$matchArr[$v] = oo::$config['mttmatchnew'][$v];
+			}
+			oo::$config['mttmatchnew'] = $matchArr;//按照给定type排序
+		}
+       
+        //ATOP锦标赛置顶，开关未打开时不显示
+        /*
+        $matchArr = $TopsArr = array();
+		foreach ((array) oo::$config['mttmatchnew_mtype'] as $v) {
+			if (in_array($v, array(50,54,55) )) {
+				oo::$config['act866_primary'] && $TopsArr[$v] = oo::$config['mttmatchnew'][$v];
+			} elseif ($v == 51) {
+				if (oo::$config['act866_final']) {
+					if (oo::act(866, $sid)->ifFinalDate()) {
+						$TopsArr[$v] = oo::$config['mttmatchnew'][$v];
+					}
+				}
+			}elseif($v == 68){
+				//if (oo::$config['act824_mtt68']){
+					$TopsArr[$v] = oo::$config['mttmatchnew'][$v];
+				//}
+			} else {
+				$matchArr[$v] = oo::$config['mttmatchnew'][$v];
+			}
+		}
+        */
+		//oo::$config['mttmatchnew'] = $TopsArr + $matchArr;
+
+		if(($sid == 144) && (date('w') != 1) || (date('Hi') > 2000)){//波兰周1添加超大场 
+			unset(oo::$config['mttmatchnew'][40]);
+		}
+
+		foreach ((array)oo::$config['mttmatchnew'] as $mtype => $v) {//去掉开赛时间为空的
+			if (!isset(oo::$config['jbsnew']['newserver'][$mtype])) {
+				unset(oo::$config['mttmatchnew'][$mtype]);
+			}else{
+				foreach ((array)oo::$config['jbsnew']['newserver'][$mtype] as $key => $value) {	
+					if (!$value['startTime']) {
+						unset(oo::$config['mttmatchnew'][$mtype]);
+					}
+				}
+ 				//oo::$config['act824_OfflineMTT'] 此处暂时用站点控制 5/10号上线之后改回开关控制
+				if(oo::matchnew()->checkMttOffline($mtype,$param)) {
+					unset(oo::$config['jbsnew']['newserver'][$mtype], oo::$config['mttmatchnew'][$mtype]);//符合下线策略条件，下线
+				}
+			}
+			
+			if($v['isLoop']){
+				unset(oo::$config['mttmatchnew'][$mtype]);
+			}
+		}
+
+		$aMttKeys = array( );
+		foreach( (array) oo::$config['mttmatchnew'] as $key => $val ){//活动比赛
+			$mtype = $key;
+			$sigTime = oo::matchnew()->getSigTime( $mtype );
+			/*if(oo::$config['act866']){
+				if(in_array($sid, array(117, 31) ) && !oo::act(866,$sid)->ifFinalDate() && in_array($mtype, array(50)) && date('H:i',$sigTime) == "18:30" ){
+					$sigTime = strtotime("20:00:00");
+				}
+			}*/
+			if(oo::matchnew()->checkMttOffline($mtype,$param))continue;
+
+			$aMttKeys[$sigTime . '|' . $mtype] = $mtype;
+			if(oo::$config['mttmatchnew'][$mtype]['beforetime']){
+				$beforetime = strtotime(oo::$config['mttmatchnew'][$mtype]['beforetime']);
+				if($now <  ($beforetime+ oo::$config['mttmatchnew'][$mtype]['delayTime'])){
+					$sigTime =  $beforetime;
+					$aMttKeys[$sigTime . '|' . $mtype] = $mtype;
+				}
+			}
+		}
+
+		foreach( (array) oo::$config['mttmatchnew'] as $key => $val ){//活动比赛-- 正在比赛
+			$mtype = $key;
+			foreach( (array) $val['startTime'] as $hour ){
+				$sigTime = oo::matchnew()->getSigTimebyHour( $hour );
+				if(!oo::$config['mttmatchnew'][$mtype]['beforetime']){
+					if( abs( time() - $sigTime ) >= 2 * 60 * 60 ){ //排除两小时之前的比赛
+					//	continue;
+					}
+				}else{
+					$beforetime = strtotime(oo::$config['mttmatchnew'][$mtype]['beforetime']);
+					if($beforetime && $now > ($beforetime+ oo::$config['mttmatchnew'][$mtype]['delayTime']) ){
+						continue;
+					}
+					$Hi = date( 'Hi', $beforetime);
+					if($hour == $Hi)  {
+						$aMttKeys[$beforetime . '|' . $mtype] = $mtype;
+					}
+ 				}
+				$aMttKeys[$sigTime . '|' . $mtype] = $mtype;
+			}
+		}
+		$aMtt = oo::matchnew()->getMultiMtt( $mid, $aMttKeys ); // 比赛信息
+
+		oo::setLang( $langtype ); //设置语言文件
+
+		$aOnline = oo::membertable()->onlineinfo( $mid );
+		$iUserSvid = (int)$aOnline['svid'];
+
+		foreach( (array) oo::$config['mttmatchnew'] as $key => $val ){//活动比赛
+			$mtype = $key;
+			$sigTime = oo::matchnew()->getSigTime( $mtype );
+            if (!oo::$config['act866'] && in_array($mtype, array(50, 51,54,55)))continue;
+            if(PRODUCTION_SERVER && oo::$config['act824_mttRuleOpt']) {//pc外网先屏蔽 配置版,开关配置为mtype
+				$mtypesArr = explode(',', oo::$config['act824_mttRuleOpt']);
+				if(in_array($key, $mtypesArr)){
+					continue;
+				}
+			}
+           			
+			$stTime = date( 'Hi', $sigTime - $timediff );
+			$gamePreTime = $sigTime - 5 * 60;//提前5分钟进场
+			
+			$svid = oo::matchnew()->getSvrId( $sigTime, $mtype );
+			$mttstatus = $aMtt["$svid|mttgamestatus"]; // 比赛状态
+			$aMatchType = oo::matchnew()->getMatchType( $mid, $sigTime, $mtype, $aMtt );
+
+			$sigup = (int) $aMatchType['sigup'];
+			$mtype = (int) $aMatchType['mtype'];
+			$gameserver = $aMatchType['gameserver'];
+			$signserver = $aMatchType['signserver'];
+
+			$todayUserSig = $aMtt[okey::mkmttusercnt( $sigTime, $svid )];//此次比赛玩家数
+			$currrentPlayer = $aMtt["$svid|mttgameusernum"];//现在在玩人数
+			$pKey = oo::matchnew()->setMTTjbsPlayer( $sigTime, $mtype, $currrentPlayer, $aMtt[okey::mkMTTjbsPlayer( $sigTime, $mtype )] );//保存某个场次的参赛人数
+			$pKey && ($aPlayer[$pKey] = $currrentPlayer);
+			$flag = ( ( ($now + 5 * 60) >= $sigTime ) && ( $now < $sigTime ) ) ? 1 : 0;//是否在5分钟内
+            $timeTips = date( 'H:i', $sigTime - $timediff );
+            //当前奖池 费+rebuy addon 费用 + 延迟费用
+            
+//            !PRODUCTION_SERVER && ($mtype == 13) && oo::logs()->debug(date("Y-m-d H:i:s") . " mid " . $mid . " mtype " . $mtype . " strtotime(timeTips) " . strtotime($timeTips) . " timeTips " . $timeTips . " _LINE_ ". __LINE__, "debugaddontime.txt");
+           
+            $awardePNu = oo::matchnew()->currentRewardInfo($mtype, ($sigTime - $timediff ));
+            $awardePNum = $awardePNu['rewardNum'] ? $awardePNu['rewardNum'] : 0;
+            $extraMoney = $awardePNu['countMoney'] ? $awardePNu['countMoney'] : 0;
+				
+			
+			//参赛券报名规则用， signTicketNum大于0按钮显示参赛券参赛，小于等于0则不能使用参赛券报名，按钮显示报名费参赛。
+			$ticketTmp['signTicket'] = $val['signTicket'] ? intval($val['signTicket']) : 0;
+			$ticketTmp['signTicketNum'] = $ticketTmp['signTicket'] ? oo::usertoolworking()->getUnuseCount($mid, $ticketTmp['signTicket']) : -1;
+
+			$ticketTmp['signTicketNotice'] = (array)  explode('#',$val['noTicketTips']);
+			$delayLastTime = -1;
+			$delayState = 0;
+            $timeT = $sigTime - $timediff;
+			if ( $val['delayTime'] && ((time() > ($sigTime - $timediff)) && (time() < ($sigTime - $timediff + $val['delayTime'])))) {
+				$delayLastTime = $sigTime - $timediff + $val['delayTime'] -time();
+				$delayState = 1;
+				if (ocache::mttsig()->get("MTTUSERCNT|{$timeT}|$svid") < oo::$config['mttmatchnew'][$mtype]['numlowerlimit']) {//报名人数小于参数人数下限 不放开延迟报名
+						$delayState = 0;
+						$delayLastTime = -1;
+				}
+			}
+            
+			//if(oo::$config['act866'] && in_array($mtype, array(50, 51) ) )$val['signMoney'] = oo::act(866,$sid)->getSignMoney($mtype);
+            $isCanQui = true;//oo::matchnew()->isMTTGray($mtype, $sid);
+            $nowEnd = oo::matchnew()->getTimeBeginEnd();
+            $midTime = $sigTime - $timediff - $nowEnd['dayEnd'];
+            $dayNumber =   $midTime > 0 ? ceil($midTime / (24 * 60 * 60)) : 0;
+			
+			$aTemp = array( 'mtype' => $mtype, //类型
+				'tips' => ( ($sid == 67) && (in_array( $stTime, (array) $val['startTime2'] ))) ? $val['tips2'] : $val['tips'], //比赛标题
+				'picUrl' => oo::$config['OpenNewMTTCMS']?'mttnew/'.$val['pc_picurlnew']:$val['picUrl'], //图片url
+				'mttTop' => (int)$val['mttTop'],//是否置顶（0不置顶）
+				'signStatus' => $sigup, //状态 0:未 1:已
+				'signMoney' => oo::$config['blowup'] > 1 ? $val['signMoney'] * oo::$config['blowup'] : $val['signMoney'], //费
+				'signCount' => $todayUserSig, //人数
+				'curply' => $currrentPlayer, //当前在玩人数
+				'timeTips' => $timeTips, //时间提示（文字）
+				'gametime' => array( date( 'H:i', $gamePreTime - $timediff ), date( 'H:i', $sigTime - $timediff ) ),
+				'flag' => $flag, //是否在5分钟内
+				'lasttime' => 1000 * ( $sigTime - $now), //比赛倒计时 毫秒
+				'gameserver' => $gameserver,
+				'signserver' => $signserver,
+				'mttstatus' => ($mttstatus != 1) ? $flag : (( $now < $sigTime ) ? $flag : 2), //2正在比赛，1 5分钟内准备比赛，0其他
+				'id' => $key,
+                'delay' => $val['delay'] ? $val['delay'] : '', //是否延迟
+                'delayTime' => $val['delay'] ? $val['delayTime'] : '', //延迟时间
+                'delayPic' => $val['delay'] ? $val['delayPic'] : '', //延迟图片
+
+                'rebuystatus' =>$val['rebuystatus'] ? $val['rebuystatus'] : '', //是否rebuy
+                'rebuydesc' => $val['rebuystatus'] ? oo::matchnew()->getRebuydesc($mtype, $langtype) : '', //rebuy 说明
+                'rebuyPic' => $val['rebuystatus'] ? $val['rebuyPic'] : '', //rebuy 图片
+
+                'addonstatus' => $val['addonstatus'] ? $val['addonstatus'] : '', //是否addon
+                'addondesc' => $val['addonstatus'] ? oo::matchnew()->getAddondesc($mtype, $langtype) : '', //addon 说明
+                'addonPic' => $val['addonstatus'] ? $val['rebuyPic'] : '', //addon 图片
+                'serviceFee' => $val['serviceFee'] ? ($val['serviceFee'] * (oo::$config['blowup'] > 0 ? oo::$config['blowup'] : 1)) : '', //服务费
+                'delayState' => $delayState,//延迟状态
+                'delayLastTime'=> $delayLastTime,//isset($val['delayTime']) ? ((time() > ($sigTime - $timediff)) && ( time() < ($sigTime - $timediff + $val['delayTime'])) ? ($sigTime - $timediff + $val['delayTime'] - time()) : -1) : -1,//延迟时间
+                'keyid' => (int) ($mtype . ($sigTime - $timediff)),
+                'isMtype' => ($iUserSvid == $svid) ? 1 : 0,//断线重连，判断玩家是否在这个场次
+                'awardmethod' => (isset($val['awardmethod']) && !empty($val['awardmethod'])) ? $val['awardmethod'] : '',
+                'isCanQuit' => $isCanQui,
+                'numlowerlimit' => $val['numlowerlimit'] ? $val['numlowerlimit'] : '',//人数下限
+                'gameBeginTime' => $sigTime - $timediff,//返回时间戳
+                'dayNumber' => $dayNumber,//返回距离今天还有几天 0 今天 1 明天
+
+               'champion'=> $extraMoney,//当前奖池
+               'championPeople'=> $awardePNum,//奖励人数   
+               'sigTime'=> $sigTime, 
+			   'signTicket'=> $ticketTmp['signTicket'],
+			   'signTicketNum'=> $ticketTmp['signTicketNum'],
+			   'signTicketNotice'=> $ticketTmp['signTicketNotice'],
+			   'kibonstatus' => (int)$ticketTmp['kibonstatus'],  //击杀奖励
+			);
+//			if(oo::$config['act866']){
+//				$aTemp['sigTime'] = $sigTime;
+//			}
+			
+//			if($sid == 57 && $mtype==12){
+//				$aTemp['reward'][0] = str_replace('100000','100K',$aTemp['reward'][0]);
+//			}
+			
+			$aTemp['tipsBold'] = in_array( oo::$config['sid'], array(101)) && in_array($mtype, array(26) ) ? true : false;//德语3M场加粗
+
+			if(oo::$config['matchOpt']){//比赛场优化
+				$aReward = (array)oo::$config['mttmatchnew'][$mtype]['reward'];
+				if($aReward){
+					foreach($aReward as $k=>$v){
+						if (in_array($v[3], array(379, 380, 384, 387))) {//pc不支持实物券 暂时屏蔽
+							continue;
+						}
+						if($v[3] && $v[4]){
+							if($bagid = (int)$v[5]){ //发礼包
+								$bagInfo = oo::bag(359)->get($bagid);
+								$temp = array();
+								if(is_array($bagInfo) && ! empty($bagInfo['data'])){
+									foreach($bagInfo['data'] as $bval){
+										$temp[] = $bval['name'];
+									}
+								}
+								$aTemp['rewardName'][(int)$k-1] = ! empty($temp) ? implode('+', $temp) : '';
+							}else{
+								$ddcard = (int)$v[3];
+								$aTemp['rewardName'][(int)$k-1] = isset(lang::$property[$ddcard]) ? (string) lang::$property[$ddcard][0] : '';
+							}
+						}
+					}
+				}
+			}
+			
+//			if( ($sid == 57) && in_array( $mtype, array( 33, 34 ) ) ){ //精英联赛置顶
+//				if( $sigup == 1 ) $aRet_TopSign[] = $aTemp;
+//				if( $sigup != 1 ) $aRet_TopNotSign[] = $aTemp;
+//			}else{
+				if( $sigup == 1 ) $aRet_Sign[] = $aTemp;
+				if( $sigup != 1 ) $aRet_NotSign[] = $aTemp;
+//			}
+	
+		}
+		foreach( (array) oo::$config['mttmatchnew'] as $key => $val ){//活动比赛-- 正在比赛
+			$mtype = $key;
+			$k = 100;
+            
+            if (!oo::$config['act866'] && in_array($mtype, array(50, 51,54,55)))continue;
+            if (oo::$config['act887'] && !of::isBoyaaIp() && in_array($mtype, array(57)))continue;
+            $toTime = "2015-04-16 21:30";
+            if(PRODUCTION_SERVER && oo::$config['act870'] && in_array($mtype, array()) && $now > strtotime($toTime))continue;
+			
+			$nowMatchSigTime = 0;
+
+            if(PRODUCTION_SERVER && oo::$config['act824_mttRuleOpt']) {//pc外网先屏蔽 配置版,开关配置为mtype
+				$mtypesArr = explode(',', oo::$config['act824_mttRuleOpt']);
+				if(in_array($key, $mtypesArr)){
+					continue;
+				}
+			}
+
+			foreach( (array) $val['startTime'] as $hour ){
+				$sigTime = oo::matchnew()->getSigTimebyHour( $hour );
+				$stTime = date( 'Hi', $sigTime - $timediff );
+				if( abs( time() - $sigTime ) >= 2 * 60 * 60 ){ //排除两小时之前的比赛					
+					continue;
+				}				
+
+
+				$gamePreTime = $sigTime - 5 * 60;//提前5分钟进场
+
+				$aMatchType = oo::matchnew()->getMatchType( $mid, $sigTime, $mtype, $aMtt );
+
+				$sigup = (int) $aMatchType['sigup'];
+				$mtype = (int) $aMatchType['mtype'];
+				$gameserver = $aMatchType['gameserver'];
+				$signserver = $aMatchType['signserver'];
+				$svid = oo::matchnew()->getSvrId( $sigTime, $mtype );
+                $timeLeft = $sigTime - $timediff;
+				$tmphis=ocache::mttsig()->get("$svid|{$timeLeft}|championdeleftPNum");
+				
+                if ($val['delay'] && (!ocache::mttsig()->get("$svid|{$timeLeft}|championdeleftPNum")))continue;//过滤没有开赛的比赛
+				$todayUserSig = $aMtt[okey::mkmttusercnt( $sigTime, $svid )];//此次比赛玩家数
+				$currrentPlayer = $aMtt["$svid|mttgameusernum"];//现在在玩人数
+				$pKey = oo::matchnew()->setMTTjbsPlayer( $sigTime, $mtype, $currrentPlayer, $aMtt[okey::mkMTTjbsPlayer( $sigTime, $mtype )] );//保存某个场次的参赛人数
+				$pKey && ($aPlayer[$pKey] = $currrentPlayer);
+				$flag = ( ( ($now + 5 * 60) >= $sigTime ) && ( $now < $sigTime ) ) ? 1 : 0;//是否在5分钟内
+                
+                $awardePNu = oo::matchnew()->currentRewardInfo($mtype, ($sigTime - $timediff));
+                PRODUCTION_SERVER && oo::logs()->debug(date("Y-m-d H:i:s") . " mid " . $mid . " mtype " . $mtype . " strtotime(timeTips) " . strtotime($timeTips) . " timeTips " . $timeTips . " _LINE_ ". __LINE__, "debugaddontime.txt");
+                $awardePNum = $awardePNu['rewardNum'] ? $awardePNu['rewardNum'] : 0;
+                $countMoney = $awardePNu['countMoney'] ? $awardePNu['countMoney'] : 0;
+				
+				//参赛券报名规则用， signTicketNum大于0按钮显示参赛券参赛，小于等于0则不能使用参赛券报名，按钮显示报名费参赛。
+				$ticketTmp['signTicket'] = $val['signTicket'] ? intval($val['signTicket']) : 0;
+				$ticketTmp['signTicketNum'] = $ticketTmp['signTicket'] ? oo::usertoolworking()->getUnuseCount($mid, $ticketTmp['signTicket']) : -1;
+				$ticketTmp['signTicketNotice'] = (array)  explode('#',$val['noTicketTips']);
+                if(oo::$config['mttmatchnew'][$mtype]['beforetime']){
+					$beforetime = strtotime(oo::$config['mttmatchnew'][$mtype]['beforetime']);
+					$Hi = date( 'Hi', $beforetime);
+					if($hour == $Hi)  $sigTime = $beforetime;
+					if( abs(time()) >= $sigTime ){ //过滤结束的比赛					
+						continue;
+					}				
+ 				}
+				$delayLastTime = -1;
+				$delayStat = 0;
+                $timeT = $sigTime - $timediff;
+				
+				if ( $val['delayTime'] && ((time() > ($sigTime - $timediff)) && (time() < ($sigTime - $timediff + $val['delayTime'])) )) {
+						
+						$delayLastTime = $sigTime - $timediff + $val['delayTime'] -time();
+						$delayStat = 1;
+					if (ocache::mttsig()->get("MTTUSERCNT|{$timeT}|$svid") < oo::$config['mttmatchnew'][$mtype]['numlowerlimit']){//报名人数小于参数人数下限 不放开延迟报名
+							$delayStat = 0;
+							$delayLastTime = -1;
+					}
+				}
+				
+//				if(oo::$config['act866'] && in_array($mtype, array(50, 51) ) )$val['signMoney'] = oo::act(866,$sid)->getSignMoney($mtype);
+                //$isCanQuit = oo::matchnew()->isMTTGray($mtype, $sid);//控制退赛 
+                $isCanQuit = true;
+				$aTmp = array( 'mtype' => $mtype, //类型
+					'tips' => ( ($sid == 67) && (in_array( $stTime, (array) $val['startTime2'] ))) ? $val['tips2'] : $val['tips'], //比赛标题
+					'picUrl' =>  oo::$config['OpenNewMTTCMS']?'mttnew/'.$val['pc_picurlnew']:$val['picUrl'], //图片url
+					'mttTop' => (int)$val['mttTop'],//是否置顶（0不置顶）
+					'signStatus' => $sigup, //状态 0:未 1:已, //状态 0:未 1:已
+					'signMoney' => oo::$config['blowup'] > 1 ? $val['signMoney'] * oo::$config['blowup'] : $val['signMoney'], //报名费
+					'signCount' => $todayUserSig, //人数
+					'curply' => $currrentPlayer, //当前在玩人数
+					'timeTips' => date( 'H:i', $sigTime - $timediff ), //时间提示（文字）
+					'gametime' => array( date( 'H:i', $gamePreTime - $timediff ), date( 'H:i', $sigTime - $timediff ) ),
+					'flag' => $flag, //是否在5分钟内
+					'lasttime' => 1000 * ( $sigTime - $now), //比赛倒计时 毫秒
+					'gameserver' => $gameserver,
+					'signserver' => $signserver,
+					'mttstatus' => ( $now < $sigTime ) ? $flag : 2, //2正在比赛，1 10分钟内准备比赛，0其他
+					'id' => $mtype . $k,
+                    'delay' => $val['delay'] ? $val['delay'] : '', //是否延迟
+                    'delayTime' => $val['delay'] ? $val['delayTime'] : '', //延迟时间
+                    'delayPic' => $val['delay'] ? $val['delayPic'] : '', //延迟图片
+                    'delayLastTime'=> $delayLastTime,//延迟时间
+                    'numlowerlimit' => $val['numlowerlimit'] ? $val['numlowerlimit'] : '',//人数下限
+
+                    'rebuystatus' =>$val['rebuystatus'] ? $val['rebuystatus'] : '', //是否rebuy
+                    'rebuydesc' => $val['rebuystatus'] ? oo::matchnew()->getRebuydesc($mtype, $langtype) : '', //rebuy 说明
+                    'rebuyPic' => $val['rebuystatus'] ? $val['rebuyPic'] : '', //rebuy 图片
+
+                    'addonstatus' => $val['addonstatus'] ? $val['addonstatus'] : '', //是否addon
+                    'addondesc' => $val['addonstatus'] ? oo::matchnew()->getAddondesc($mtype, $langtype): '', //addon 说明
+                    'addonPic' => $val['addonstatus'] ? $val['rebuyPic'] : '', //addon 图片
+                     'serviceFee' => $val['serviceFee'] ? $val['serviceFee'] : '', //服务费
+                    'delayState' => $delayStat,//延迟状态
+                    'keyid' => (int) ($mtype . ($sigTime - $timediff)),
+                    'isMtype' => ($iUserSvid == $svid) ? 1 : 0,//断线重连，判断玩家是否在这个场次
+                    'awardmethod' => (isset($val['awardmethod']) && !empty($val['awardmethod'])) ? $val['awardmethod'] : '',
+                    'isCanQuit' => $isCanQuit,
+                    'gameBeginTime' => $sigTime - $timediff,//比赛开始时间戳
+
+                   'champion'=> $countMoney,//当前奖池
+                   'championPeople'=> $awardePNum,//奖励人数   
+                   'sigTime'=> $sigTime, 
+                   'signTicket'=> $ticketTmp['signTicket'],
+				   'signTicketNum'=> $ticketTmp['signTicketNum'],
+				   'signTicketNotice'=> $ticketTmp['signTicketNotice'], 
+				   'kibonstatus' => (int)$ticketTmp['kibonstatus'],
+				);
+//				if(oo::$config['act866']){
+//					$aTmp['sigTime'] = $sigTime;
+//				}
+				
+//				if($sid == 57 && $mtype==12){
+//					$aTmp['reward'][0] = str_replace('100000','100K',$aTmp['reward'][0]);
+//				}
+
+				$aTmp['tipsBold'] = in_array( oo::$config['sid'], array(101)) && in_array($mtype, array(26) ) ? true : false;//德语3M场加粗
+				
+				$k++;
+//
+//				if( ($sid == 57) && in_array( $mtype, array( 33, 34 ) ) ){ //精英联赛
+//					$aTmp['mttstatus'] = ($sigTime < $nowMatchSigTime) ? 3 : $aTmp['mttstatus'];
+//					if( $sigTime == $nowMatchSigTime ){
+//						$aTmp['mttstatus'] = (oo::matchnew()->getmttstatus( 0, $sigTime, $mtype ) == 1) ? 2 : 3;
+//					}
+//					$aTmp['id'] = $sigTime;
+//					$aRet_Topplayed[] = $aTmp;
+//				}else{
+					$aRet_played[] = $aTmp;
+//				}
+
+			}
+		}
+		$aRet = array_merge( $aRet_TopNotSign, $aRet_TopSign, $aRet_Topplayed, $aRet_NotSign, $aRet_Sign, $aRet_played );
+
+		//对ATOP锦标赛做过滤处理
+//		if(oo::$config['act866']){
+//			$aRet = oo::act(866, $sid)->filterData($aRet);
+//		}
+		//锦标赛排序优化
+		if(oo::$config['act824_mttTop']){
+			$mttsignKeys = $mttsign = $TopSigKeys = $DelayKeys = $NotSignKeys = $mttTopSign = $mttDelay = $mttNotSign  = array();//置顶—>延时比赛->未开赛
+			foreach($aRet as $k=>$v){
+				$aRet[$k]['smtype'] =  oo::$config['mttmatchnew'][$v['mtype']]['mttType'];
+				if((int)$v['signMoney'] == 0 && $v['signTicket'] > 0){//只用参数劵报名，取出等值游戏币
+					$aRet[$k]['signTicketMoney'] = oo::$config['cardlist'][$v['signTicket']]['allprice']?oo::$config['cardlist'][$v['signTicket']]['allprice'] : 1;//参数劵的价值
+				}else{
+					$aRet[$k]['signTicketMoney'] = $v['signMoney'] + $v['serviceFee'];//报名费+服务费 用于排序用
+				}
+				if($v['signStatus'] > 0){//已报名的
+					$mttsignKeys[$k] = $v['sigTime'];//开赛时间
+					$mttsign[$k] = $aRet[$k];//置顶
+					oo::logs()->debug(date("Y-m-d H:i:s") . " delayStat " . $delayStat . " mid " . $mid . " mtype " . $mtype . " time " . $aTmp['timeTips'] . json_encode($aRet_delay), "mttsign.txt");
+ 					unset( $aRet[$k] );
+					continue;
+				}
+				if($v['mttTop'] > 0 && $v['mttstatus'] !== 2){//mttTop大于0，说明该类型锦标赛要置顶（注：0不置顶）
+					$TopSigKeys[$k] = $v['mttTop'];//置顶
+					$mttTopSign[$k] = $aRet[$k];
+					unset( $aRet[$k] );
+					continue;
+				}
+				if($v['delayLastTime'] > 0  ){//延迟比赛的
+					$DelayKeys[$k] = $v['delayLastTime'];
+					$mttDelay[$k] = $aRet[$k];
+					unset( $aRet[$k] );
+					continue;
+				}
+				
+				if( $v['lasttime'] > 0){//还没开赛的
+					$NotSignKeys[$k] = $v['sigTime'];//开赛时间
+					$mttNotSign[$k] = $aRet[$k];//置顶
+					unset( $aRet[$k] );
+					continue;
+				}
+				
+			}
+			array_multisort($TopSigKeys, SORT_ASC, SORT_NUMERIC, $mttTopSign); //置顶升序
+			array_multisort($DelayKeys, SORT_ASC, SORT_NUMERIC, $mttDelay); //延时时间升序
+			array_multisort($NotSignKeys, SORT_ASC, SORT_NUMERIC, $mttNotSign); //未开赛时间升序
+			array_multisort($mttsignKeys, SORT_ASC, SORT_NUMERIC, $mttsign); //未开赛时间已报名升序
+			$aRet = array_merge( $mttTopSign, $mttDelay, $mttNotSign, $mttsign ,$aRet);//置顶+延时+未开赛+剩余已经进行中的
+		}
+		
+		if( in_array( $sid, array( 143, 144 ) ) ){ //波兰、意大利将千万锦标赛置顶（）
+			foreach( $aRet as $k => $v ){
+                if( in_array( $v['mtype'], array( 31, 39,40 ) ) ){
+					$aTmp = $aRet[$k];
+					unset( $aRet[$k] );
+					array_unshift( $aRet, $aTmp );
+				}
+			}
+		}
+		if (in_array($sid, array(104,57))) { //不显示正在进行的比赛
+			foreach ($aRet as $k => $v) {
+				if ($v['mttstatus'] == 2 && $v['delayState'] != 1) {
+					unset($aRet[$k]);
+				}
+			}
+			$aRet = array_values($aRet);
+		}
+		$aPlayer && ocache::event()->setMulti( $aPlayer, 24 * 60 * 60 );//保存某个场次的参赛人数
+
+		return $this->genRet( $param['mid'], $aRet );
+	}
+	
+	/**
+	 * 获取某场比赛的状态
+	 * @param type $param
+	 * @return type
+	 */
+	public function getMatchStatus( $param ){
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		
+		$mid = functions::uint($param['mid']);
+		$mtype = functions::uint($param['param']['mtype']);
+		$sigTime = functions::uint($param['param']['sigTime']);
+		
+		if(!$mtype || !$sigTime || !$mid){
+			return $this->genRet( $param['mid'], array( 'error !' ) );
+		}
+		
+		$aStatus = oo::matchnew()->getGameStatus($mid, $mtype, $sigTime);
+		
+		return $this->genRet( $param['mid'], $aStatus );
+	}
+
+	public function getInfo( $param ){
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$ret = array();
+		$mid = $param['mid'];
+		$ret['money'] = (int) oo::money()->getAvailableMoney($mid);
+		return $this->genRet( $param['mid'], $ret );
+	}
+	
+	/**
+	 * 获取报名用户列表
+	 * @param type $param
+	 * @return type
+	 */
+	public function getMttSingList($param){
+		if( !$this->auth( $param, 0) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$mtype = $param['param']['mtype'];
+		$sigTime = $param['param']['sigTime'];
+		$ret = oo::mttuser()->getMttSingList($mtype, $sigTime);
+		return $this->genRet( $param['mid'], $ret);
+	}
+	
+	public function getRecommended($param){
+		if( !$this->auth( $param, 0) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$mtype = $param['param']['mtype'];
+		$sigTime = $param['param']['sigTime'];
+		$ret = oo::matchnew()->getRecommended($mtype, $sigTime);
+		return $this->genRet( $param['mid'], $ret);
+	}
+
+	/**
+	 * 获取某场比赛的详细信息
+	 * @param $param
+	 * @return array
+	 */
+	public function mttMutualOptimize($param){
+		$mid = (int) $param['mid'];
+		if( !$this->auth( $param, 1 ) ){
+			return $this->genRet( $mid, array( ) );
+		}
+        $sid = $param['sid'] ? (int) $param['sid'] : oo::$config['sid'];
+		$param['param']['type']=0;//比赛概述
+		$aRet['summary'] = oo::act(870, $sid)->mttMutualOptimize($param);
+		$param['param']['type']=1;//盲注信息
+		$aRet['strtimesmallblind'] = oo::act(870, $sid)->mttMutualOptimize($param);
+		$param['param']['type']=2;//奖励信息
+		$aRet['rewardstr'] = oo::act(870, $sid)->mttMutualOptimize($param);
+		$mtype = $param['param']['mtype'];
+		$sigTime = $param['param']['sigTime'];
+		$aRet['recommended'] = oo::matchnew()->getRecommended($mtype, $sigTime);
+		
+		return $this->genRet( $mid, (array) $aRet );
+	}
+	
+	/**
+	 * 获取mtt版淘金赛相关的信息
+	 * @param type $param
+	 * @return array
+	 */
+	public function getTjsInfo($param){
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$aInfo = oo::match()->getTjsInfo($param);
+		return $this->genRet( $param['mid'], $aInfo);
+	}
+	
+	/**
+	 * 获取某一场锦标赛的配置信息
+	 * @param type $param
+	 * @return type
+	 */
+	public function getMttInfo($param){
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$aInfo = oo::matchnew()->getMttInfo($param);
+		return $this->genRet( $param['mid'], $aInfo);
+	}
+
+	/**
+	 * 获取淘金赛榜单
+	 * @param unknown_type $param
+	 */
+	public function getTjsRankingList($param) {
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$aInfo = oo::match()->getTjsRankingList($param);
+		return $this->genRet( $param['mid'], $aInfo);		
+	}
+
+
+	/**
+	 * 换桌旁观接口
+	 * @param $param
+	 * @return array
+	 */
+	public function getTableLookOnInfo($param) {
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$aInfo = oo::matchnew()->getTableLookOnInfo($param);
+		return $this->genRet( $param['mid'], $aInfo);
+	}
+	
+	/**
+	 * mtt开赛提醒
+	 * @param array $param
+	 * @return number
+	 */
+	public function mttBeginNotice($param){
+		if( ! $this->auth($param, 0)){
+			$ret['errorNo'] = -1;
+			return $this->genRet($param['mid'], $ret);
+		}
+		$mid = functions::uint($param['mid']);
+		$mtype = functions::uint($param['param']['mtype']);
+		$sigTime = functions::uint($param['param']['sigTime']);
+		$phoneNum  = functions::uint($param['param']['phoneNum']);
+		oo::logs()->debug(date('Y-m-d H:i:s').json_encode($param), 'mttbeginnotice.txt');
+		
+		if(!$phoneNum || !$mid || !$mtype || !$sigTime){
+			$ret['errorNo'] = -2;
+			oo::logs()->debug(date('Y-m-d H:i:s').json_encode($param), 'mttbeginnotice.txt');
+			return $this->genRet($param['mid'], $ret);
+		}
+		 
+		if(!oo::$config['mttSMSNotice']){
+			$ret['errorNo'] = -3;
+			return $this->genRet($param['mid'], $ret);
+		}
+		//海外平台还需要传区号过来
+		if(!in_array(oo::$config['sid'],array(93,117)) && empty($param['param']['area'])){
+			$ret['errorNo'] = -4;
+			return $this->genRet($param['mid'], $ret);
+		}
+		$area  = isset($param['param']['area']) ?  (string)$param['param']['area'] : 86;//区号
+		$ret = oo::matchnew()->setBeginNoticeInfo($mid, $area, $phoneNum, $mtype, $sigTime);
+		return $this->genRet( $param['mid'], $ret);
+	}
+
+	/**
+	 * re-entry
+	 * @param array $param
+	 * @return array
+	 */
+	public function reentry($param){
+		if(!$this->auth($param, 3)){
+			return $this->genRet($param['mid'], array('result' => -1));
+		}
+	
+		$mid = (int) $param['mid'];
+		$api = (int) $param['api'];
+		$mtype = (int) $param['param']['mtype'];
+		$sigTime = (int) $param['param']['sigTime']; //报名场次的开赛时间
+	
+		if(!oo::$config['mttReEntry']){
+			return $this->genRet($mid, array('result' => -2));
+		}
+	
+		if(!$sigTime || !$mtype || !$mid){
+			return $this->genRet($mid, array('result' => -3));
+		}
+	
+		$aRet = array('result' => 0);
+		$ret = oo::matchnew()->reentry($mid, $mtype, $sigTime);
+		if(is_array($ret)){
+			$aRet = $ret;
+			$aRet['result'] = 1;
+		}else{
+			$aRet['result'] = $ret;
+		}
+	
+		return $this->genRet( $mid, $aRet );
+	}
+	
+	/*
+	 * 获取关联的卫星赛列表
+	 * @param array $param
+	 * @return array
+	 */
+	public function getMttSons($param){
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$mid = (int) $param['mid'];
+		$sid = (int) $param['sid'];
+		$param['langtype'] = oo::$config['langtype'];
+		$list = oo::matchnew()->getSons($param);
+		$ret = $list;
+		/*验证延迟报名是否结束*/
+		return $this->genRet( $param['mid'], $ret);   
+	}	
+	
+	/*游戏场 淘汰赛 竞标赛 LOGO*/
+	public function getGameZoneLogos($param) {
+		if( !$this->auth( $param, 0 ) ){
+			return $this->genRet( $param['mid'], array( 'sig failed.' ) );
+		}
+		$ret = array();
+		$mid = (int) $param['mid'];
+		$unid = (int) $param['unid'];
+		if (oo::$config['gameZoneLogos']) {
+			$ret = oo::matchnew()->getGameZoneLogos($unid);
+		}
+		return $this->genRet( $mid, $ret);
+	}
+}

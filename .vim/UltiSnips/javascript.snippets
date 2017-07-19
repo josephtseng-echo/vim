@@ -1,0 +1,2105 @@
+# Prototype
+snippet isstring "" i
+Object.prototype.toString.call(${1:key}) === "[object String]";
+endsnippet
+
+snippet str2json
+var json = (new Function("return " + jsonStr))();
+var json = eval('(' + jsonStr + ')');
+//ie8+
+var json = JSON.parse(jsonStr);
+endsnippet
+
+snippet jssortram
+${1:tabList}.sort(function(){
+	return Math.random() > 0.5 ? -1 : 1;
+}); 
+endsnippet
+
+snippet jsnamespace
+${1:game}.namespace = function(ns){
+	var parts = ns.split("."),
+	object = $1,
+	i, len;
+
+	if(parts[0] === "$1"){
+		parts = parts.slice(1);
+	}
+	for(i = 0, len = parts.length; i < len; i+=1){
+		if(!object[parts[i]]){
+			object[parts[i]] = {};
+		}
+		object = object[parts[i]];
+	}
+	return object;
+};
+endsnippet
+
+snippet reg1
+^(.*\.(?:css|js))(.*)$/i
+endsnippet
+
+snippet htmlencode
+function htmlencode(s){
+	var div = document.createElement('div');
+	div.appendChild(document.createTextNode(s));
+	return div.innerHTML;
+}
+function htmldecode(s){
+	var div = document.createElement('div');
+	div.innerHTML = s;
+	return div.innerText || div.textContent;
+}
+endsnippet
+
+snippet jsmodules
+(function ( my ) {
+	my.xxMethod = function () {
+		//code
+	}
+})( window.${1:myModule} = window.${2:myModule} || {} );
+endsnippet
+
+snippet isalltype
+function isObject(obj) {
+	return toString.call(obj) === "[object Object]";
+}
+
+function isString(obj) {
+	return toString.call(obj) === "[object String]";
+}
+
+function isArray(obj) {
+	return toString.call(obj) === "[object Array]";
+}
+
+function isFunction(obj) {
+	return toString.call(obj) === "[object Function]";
+}
+endsnippet
+
+snippet maxnum
+Number.MAX_VALUE
+endsnippet
+
+snippet minnum
+Number.MAX_VALUE
+endsnippet
+
+snippet jsdigui
+while (${1:tag}) {
+	if (!${2:$1} || ${3:$1} == this) {
+		break;
+	}
+	if (${4:$1}.nodeType == 1 && ${5:$1}.tagName.toLowerCase() == 'li') {
+		${0://code}
+		break;
+	} else {
+		//向上查找
+		${6:$1} = ${7:$1}.parentNode;
+	}
+}
+endsnippet
+
+snippet gettext
+/**
+* 获取dom标签内容
+*/
+var getText = function(el){
+	var message =  "";
+	if (document.body.innerText) {
+		message = el.innerText;
+	} else {
+		message = el.innerHTML.replace(/\&lt;br\&gt;/gi,"\n").replace(/(&lt;([^&gt;]+)&gt;)/gi, "");
+	}
+	return message;
+};
+endsnippet
+
+snippet constr
+${1:class_name}.prototype.constructor = ${1:class_name}
+endsnippet
+
+snippet getstyle
+var style = document.getElementById("${1:id}").currentStyle || document.defaultView.getComputedStyle(document.getElementById("${2:$1}"), '')
+endsnippet
+
+snippet switch
+switch(${1:expression}) {
+	case '${3:case}':
+		${4:// code}
+		break;
+	${5://case...}
+	default:
+		${2:// code}
+		break;
+}
+endsnippet
+
+snippet a
+alert(${1});
+endsnippet
+
+snippet resetSize
+/**
+* 重置字体大小 
+*/
+(function() {
+	if ( !! navigator.userAgent.match(/AppleWebKit.*Mobile.*/)) {
+		var body_fontsize = document.body.currentStyle || document.defaultView.getComputedStyle(document.body, '');
+		if (body_fontsize && parseInt(body_fontsize.fontSize, 10) == 8) {
+			setTimeout(function() {
+				var vw = window.innerWidth || document.documentElement.clientWidth,
+				fs = Math.ceil((vw * 16) / 480);
+				if (fs % 2 == 1) {
+					fs++;
+				}
+				try {
+					document.getElementsByTagName("html")[0].style.fontSize = fs + "px";
+					document.getElementsByTagName("body")[0].style.fontSize = fs + "px";
+				} catch(e) {}
+			},
+			1000);
+		}
+	}
+})();
+endsnippet
+
+snippet class
+var ClassName = function(a, b){
+	/* private variables */
+	var x = '',
+	y = '',
+
+	/* variable */
+	pr = function(){
+		${1://code}
+		}
+	};
+
+	/* public variable */
+	this.a = '' || a;
+	this.b = '' || b;
+
+	/* public methods */
+	this.pu = function(){
+		this.a = a;
+		tihs.b = b;
+	};
+endsnippet
+
+snippet log
+console.log(${1:str});
+endsnippet
+
+snippet createclass
+/*创建一个类对象*/
+function ${1:Classname}(${2:param1}){
+	${2:param1} = ${3:value};
+	//.....
+}
+${1:Classname}.prototype.${4:value} = ${5:value};
+var ${2:new_object} = new ${1:Classname}();
+endsnippet
+
+snippet extendclass
+/*通用继承类方法*/
+function object(o) {
+	function F() {}
+	F.prototype = o;
+	return new F();
+}
+var child = object(Parant);
+endsnippet
+
+snippet extendclass2
+/*直接使用prototype继承,创建父对象为空*/
+function ${1:Parentclass}(){}
+/*通过定义prototype继续*/
+${1:Parentclass}.prototype.species = "动物";
+/*通用做法*/
+${2:Childclass}.prototype = ${1:Parentclass}.prototype;
+${2:Childclass}.prototype.constructor = ${2:Childclass};
+var ${3:object} = new ${2:Childclass}(${4:value});
+endsnippet
+
+snippet extendclass3
+function extendfunc(${2:Childclass},${1:Parentclass}){
+	/*利用空对象继承封装*/
+	var F = function(){};
+	F.prototype = ${1:Parentclass}.prototype;
+	${2:Childclass}.prototype = new F();
+	//${2:Childclass}.prototype.constructor = ${2:Childclass};
+	${2:Childclass}.uber = ${1:Parentclass}.prototype;
+}
+extend(Cat,Animal);
+endsnippet
+
+snippet extendclass4
+/*拷贝继承*/
+function extendfunc(${2:Childclass}, ${1:Parentclass}) {
+	var p = ${1:Parentclass}.prototype;
+	var c = ${2:Childclass}.prototype;
+	for (var i in p) {
+		c[i] = p[i];
+	}
+	c.uber = p;
+}
+endsnippet
+
+snippet extendclass5
+/*浅拷贝*/
+function extendCopy(${1:Parentclass}) {
+	var c = {};
+	for (var i in ${1:Parentclass}) { 
+		c[i] = ${1:Parentclass}[i];
+	}
+	c.uber = ${1:Parentclass};
+	return c;
+}
+endsnippet
+
+snippet extendclass6
+/*深拷贝*/
+function deepCopy(${1:Parentclass}, c) {
+	c = c || {};
+	for (var i in ${1:Parentclass}) {
+		if (typeof ${1:Parentclass}[i] === 'object') {
+			c[i] = (${1:Parentclass}[i].constructor === Array) ? [] : {};
+			deepCopy(${1:Parentclass}[i], c[i]);
+		} else {
+			c[i] = ${1:Parentclass}[i];
+		}
+	}
+	return c;
+}
+endsnippet
+
+snippet constrclass1
+/*使用apply()将父对象的构造函数绑定在子对象继承*/
+function ${1:ChildClass}(${4:param}){
+	${2:ParentClass}.apply(this, arguments);
+	this.${4:param} = ${5:value};
+	//...
+}
+var ${3:object} = new ${1:ChildClass}();
+endsnippet
+
+snippet constrclass2
+/*使用prototype模式构造函数并继承*/
+${1:Childclass}.prototype = new ${2:Parentclass}();
+/*重置了prototype,使里面的属性constructor删除了，需要重置*/
+${1:Childclass}.prototype.constructor = ${1:Childclass};
+var ${3:object}= new ${1:Childclass}(${4:value});
+endsnippet
+
+snippet getjsonp
+var getjsonp = function(){
+	var script = document.createElement('script');
+	script.setAttribute("type", "text/javascript");
+	script.setAttribute('src', url);
+	script.setAttribute("id", "jsondata");
+	document.getElementsByTagName('head')[0].appendChild(script); 
+};
+endsnippet
+
+snippet jsxzevent
+document.window.onorientationchange = function(){};
+endsnippet
+
+snippet jsbodyfontsize
+var style = document.body.currentStyle || document.defaultView.getComputedStyle(document.body, '')
+console.log(style.fontSize);
+endsnippet
+
+snippet randxy
+Math.floor(Math.max(min, Math.random() * (max + 1)));
+endsnippet
+
+snippet unixtime
+Math.round(new Date().getTime() / 1000);
+endsnippet
+
+snippet isie 
+var ISIE = !! window.ActiveXObject;
+var ISIE6 = ISIE && ! window.XMLHttpRequest;
+endsnippet
+snippet jsdiv
+var ${1:popDiv} = document.createElement("div");
+${2:$1}.id = "${7:id}";
+${3:$1}.className = "${8:className}";
+${4:$1}.setAttribute("${9:attr}","${10:value}");
+${11:$1}.height = 0;
+${5:$1}.style.cssText = ["position:absolute", "display:block"].join(";");
+document.body.appendChild(${6:$1});
+endsnippet
+
+snippet jsdivs
+var arrText = ["1","2","3","4","5","6","7","8","9","10"];
+var oFrag = document.createDocumentFragment();//创建页面碎片
+for(var i = 0; i < arrText.length; i++){
+	var op = document.createElement("P");
+	var oText = document.createTextNode(arrText[i]);
+	op.appendChild(oText);
+	oFrag.appendChild(op);
+}
+document.body.appendChild(oFrag);
+endsnippet
+
+snippet jsscript
+(function() {
+	var ${1:s} = document.createElement('script');
+	${2:$1}.type = 'text/javascript';
+	${3:$1}.async = true;
+	${4:$1}.src = ${6:('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js'};
+		var el = document.getElementsByTagName('script')[0];
+	el.parentNode.insertBefore(${5:$1}, el);
+})();
+endsnippet
+
+snippet jsscripts
+(function() {
+	var el = document.getElementById("mod_stat"),
+	oFrag = document.createDocumentFragment(),
+	_bdhmProtocol = (("https:" == document.location.protocol) ? "https://" : "http://"),
+		frags = [];
+	_bdhmProtocol += "hm.baidu.com/h.js%3Fed3eae6589b7343c267cb8191d83a284";
+	_bdhmProtocol = unescape(_bdhmProtocol);
+	frags = ["http://s10.cnzz.com/stat.php?id=1947335&web_id=1947335","http://tajs.qq.com/stats?sId=15811003",_bdhmProtocol];
+		if(el){
+		for(var i = 0;i < frags.length; i++){
+			var s = document.createElement("script");
+			s.type = 'text/javascript';
+			s.async = true;
+			s.src = frags[i];
+			oFrag.appendChild(s);
+		}
+		el.appendChild(oFrag);
+	}
+})();
+endsnippet
+
+snippet jsdivbnb
+var subElem = document.create('div'),
+elem = document.getElementById('animated');
+elem.style.display = 'none';//先隐藏
+elem.appendChild(subElem);
+elem.style.width = '320px';
+elem.style.height = '480px';
+elem.style.display = 'block';//再显示
+endsnippet
+
+snippet jsdivclone
+var tmpnode = document.getElementById('container'),
+clone = tmpnode.cloneNode(true),
+list = ['foo', 'bar', 'baz'], 
+elem, 
+contents;
+
+clone.setAttribute('width','50%');
+for(var i = 0; i<list.length; i++){
+	elem = document.createElement('div');
+	content = document.createTextNode(list[i]);
+	clone.appendChild(elem);
+}
+original.parentNode.replaceChild(clone, original);
+endsnippet
+
+snippet htmlcode
+//有更优htmlencode
+function HTMLDECODE(str) {
+	str = str || "";
+	if (str === "" || str.length === 0) {
+		return '';
+	}
+	str = str.replace(/&gt;/g, ">");
+	str = str.replace(/&lt;/g, "<");
+	str = str.replace(/&#047;/g, '/');
+	str = str.replace(/&#039;/g, "'");
+	str = str.replace(/&quot;/g, '"');
+	str = str.replace(/&nbsp;/g, " ");
+	str = str.replace(/&amp;/g, "&");
+	return str;
+}
+
+function HTMLENCODE(str) {
+	str = str || "";
+	if (str === "" || str.length === 0) {
+		return '';
+	}
+	str = str.replace(/>/g, "&gt;");
+	str = str.replace(/</g, "&lt;");
+	str = str.replace(/\//g, '&#047;');
+	str = str.replace(/'/g, "&#039;");
+	str = str.replace(/"/g, '&quot;');
+	str = str.replace(/\s| /g, "&nbsp;");
+	str = str.replace(/&/g, "&amp;");
+	return str;
+}
+endsnippet
+
+snippet randint
+//随机min-max之间的正整数
+var RANDOMXY = function(min, max) {
+	return Math.floor(Math.max(min, Math.random() * (max + 1)));
+};
+endsnippet
+
+snippet jsreg
+var param1 = "^"+param1;
+var re = new RegExp(${1:param1}, "gi");
+re.test(${2:param2})
+endsnippet
+
+snippet jszw
+//JavaScript
+if(escape(str).indexOf("%u") < 0){}
+endsnippet
+
+snippet isarray
+Object.prototype.toString.call(key) === '[object Array]'
+endsnippet
+
+snippet isarr
+${1:Object} instanceof Array
+endsnippet
+
+snippet jsclass
+(function(){
+	var ${1:ClassName} = function(){
+		if(!(this instanceof ${6:$1})){
+			return new ${5:$1}(arguments[0]);
+		}
+		this.name = name;
+		this.age = age;
+		this.setOpt(arguments[0] || {});
+
+		return this;
+	};
+	${2:$1}.prototype={
+		setOpt:function(opt){
+			var fun = function(){};
+			this.opt = {
+				width : 447,
+				height : 228,
+				id : 'pop_dialog',
+				cls : 'pop_dialog',
+				content :'',    
+				overlay : true,
+				afterShow : fun
+			};
+			for (var property in opt) {
+				this.opt[property] = opt[property];
+			}
+		},
+		getName:function(){
+			console.log(this.name);
+			return this;
+		},
+		getAge:function(){
+			console.log(this.age);
+			return this;
+		}
+	};
+	return (window.${3:$1} = ${4:$1});
+})();
+//${7:$1}("旺旺",3).getName().getAge();
+endsnippet
+
+snippet jsaddevent1
+var addEvent = (function () {
+	if (document.addEventListener) {
+		return function (type, element, fun) {
+			element.addEventListener(type, fun, false);
+		};
+	} else if (document.attachEvent) {
+		return function (type, element, fun) {
+			element.attachEvent('on' + type, fun);
+		};
+	} else {
+		return function (type, element, fun) {
+			element['on' + type] = fun;
+		};
+	}
+})();
+endsnippet
+
+snippet jsaddevent
+function addEvent(type, element, fun) {
+	if (element.addEventListener) {
+		addEvent = function(type, element, fun) {
+			element.addEventListener(type, fun, false);
+		};
+	} else if (element.attachEvent) {
+		addEvent = function(type, element, fun) {
+			element.attachEvent('on' + type, fun);
+		};
+	} else {
+		addEvent = function(type, element, fun) {
+			element['on' + type] = fun;
+		};
+	}
+	return addEvent(type, element, fun);
+}
+endsnippet
+
+snippet jsajax
+/**
+* ajax
+* @name ajax
+* @function
+* @param { String } method 请求方法[post|get]
+* @param { String } url 请求地址
+* @param { Boolean } async 是否异步请求(可选)
+* @param { String | Object } args 请求参数(可选)
+* @param { Function } callback 回调函数(可选)
+* @param { Function } error 请求页面出错时的回调函数(可选)
+* @param { String } docType 返回文档格式(可选)
+*/
+function ajax(method, url, async, args, callback, error, docType){
+	var params = args;
+	async = async == null ? true: async;
+	if (args) {
+		if (typeof args === "object") {
+			var str = "";
+			for (var i in args) {
+				str += i + "=" + args[i] + "&";
+			}
+			params = str.substr(0, str.length - 1);
+		}
+	}
+
+	method = method ? method.toUpperCase() : "POST";
+	docType = docType ? docType: "text";
+	var XMLHttp = null;
+	if (window.XMLHttpRequest && !(window.ActiveXObject)) {
+		XMLHttp = new XMLHttpRequest();
+	} else if (window.ActiveXObject) {
+		try {
+			XMLHttp = new ActiveXObject("Microsoft.XMLHTTP");
+		} catch(otherMSIE) {
+			try {
+				XMLHttp = new ActiveXObject("Msxml2.XMLHTTP");
+			} catch(NoSupport) {
+				XMLHttp = null;
+			}
+		}
+	}
+
+	XMLHttp.onreadystatechange = function() {
+		if (XMLHttp.readyState == 4) {
+			if (XMLHttp.status == 200 || XMLHttp.status == 0) {
+				var param = null;
+				switch (docType) {
+					case "xml":
+						param = XMLHttp.responseXML;
+					break;
+					case "json":
+						param = Kg.JSON.parse(XMLHttp.responseText);
+					break;
+					default:
+						param = XMLHttp.responseText;
+				}
+				callback && callback(param, XMLHttp);
+				XMLHttp = null;
+			} else {
+				error && error();
+			}
+		}
+	};
+
+	if (method == "GET") {
+		if (url.indexOf("?") != -1) {
+			XMLHttp.open(method, url + (params ? ("&" + params) : ''), async);
+		} else {
+			XMLHttp.open(method, url + (params ? ("?" + params) : ''), async);
+		}
+		XMLHttp.send(null);
+	} else {
+		XMLHttp.open(method, url, async);
+		XMLHttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+		XMLHttp.send(params);
+	}
+	return XMLHttp;
+}
+endsnippet
+
+snippet jsjsonp
+/**
+* loadScript
+* @name loadScript
+* @function
+* @param { String } url 请求地址
+* @param { String | Object } args 请求参数(可选)
+* @param { Function } callback 回调函数(可选)
+*/
+function loadScript(url, args, callback) {
+	var params = args || "";
+	if (args && (typeof args === "object")) {
+		var str = "";
+		for(var i in args){
+			str += i + "=" + args[i] + "&";
+		}
+		params = str.substr(0, str.length - 1);
+	};
+	var script = document.createElement("script");
+	script.type = 'text/javascript';
+	if(/\?/g.test(url) && params === ""){
+		script.src = url + "?" + params;
+	}else{
+		script.src = url;
+	}
+	script.onload = script.onreadystatechange = function() {
+		if (!this.readyState || (this.readyState == "complete" || this.readyState == "loaded")) {
+			callback && callback();
+			script.onreadystatechange = script.onload = null;
+			script = null;
+		}
+	};
+	document.getElementsByTagName("head")[0].appendChild(script);
+}
+endsnippet
+
+snippet jsinter
+/**
+* intercept
+* @name intercept
+* @function
+* @param { Number } length 显示的长度
+* @param { String } appendStr 截取的长度
+*/
+String.prototype.intercept = function(length, appendStr){
+	var str = this;
+	str = str.trim();
+	if(str.getBytes() < length) {
+		return str;
+	}
+	var countLen = 0;
+	var charCount = 0;
+	if (appendStr.length > 0) {
+		length = length - appendStr.length;
+	}
+	for(var i = 0; i < str.length; i++){
+		if (this.charCodeAt(i) > 256){
+			countLen += 2;
+		}else{
+			countLen += 1;
+		}
+		if(countLen > length){
+			break;
+		}
+		charCount++;
+	}
+	return str.substr(0, charCount) + appendStr;
+};
+endsnippet
+
+snippet jstrim
+String.prototype.trim = function(){
+	return this.replace(/^(\s|\u3000)*|(\s|\u3000)*$/g,"");
+};
+endsnippet
+
+snippet jsua
+var UA =  {
+	Ie: !!document.all,
+	Ie6: !!document.all && !window.XMLHttpRequest,
+	Ie7: !!document.all && /msie 7.0/gi.test(window.navigator.appVersion),
+	Ie8: !!document.all && /msie 8.0/gi.test(window.navigator.appVersion),
+	FF: /firefox/gi.test(window.navigator.userAgent),
+	Opera: /opera/gi.test(window.navigator.userAgent),
+	Chrom: /Chrom/gi.test(window.navigator.userAgent),
+	Maxthon: /Maxthon/gi.test(window.navigator.userAgent)
+}
+endsnippet
+
+snippet jsextend
+/**
+* 继承对象（复制属性/方法）
+* @id extend
+* @param {Object} 被复制对象（子对象）
+* @param {Object} 复制对象（父对象）
+* @param {Boolean}  是否重写属性/方法
+* @return {Object} 返回被复制对象（子对象）
+*/
+function extend(target, souce, rewrite) {
+	for (var property in souce) {
+		if (rewrite) target[property] = souce[property];
+			else if (!target[property]) target[property] = souce[property];
+	}
+	return target;
+}
+endsnippet
+
+snippet getxy
+/**
+* 获取HTMLElement对象与窗口边界的距离
+* @id getXY
+* @param {Object} Dom对象
+* @return {Object} 返回HTMLElement对象四边与窗口边界的距离
+*/
+function getXY(dom) {
+	el = dom;
+	var bodySize = getBodySize();
+	var elRect = el.getBoundingClientRect();
+	return {
+		left: bodySize.sL + elRect.left,
+		right: bodySize.sL + elRect.right,
+		top: bodySize.sT + elRect.top,
+		bottom: bodySize.sT + elRect.bottom
+	};
+}
+/**
+* 获取页面可视宽、高、滚动全高、滚动全宽、滚动高、滚动宽
+* @id getBodySize
+* @return {Object} 页面宽度值、高度值、滚动全高度值、滚动全宽度值、滚动高值、滚动宽值
+*/
+function getBodySize() {
+	var dc = document,
+	clientH,
+	clientW,
+	scrollH,
+	scrollW,
+	scrollT,
+	scrollL;
+
+	if (dc.compatMode == "BackCompat") {
+		clientH = dc.body.clientHeight;
+		clientW = dc.body.clientWidth;
+		scrollH = dc.body.scrollHeight;
+		scrollW = dc.body.scrollWidth;
+		scrollT = dc.body.scrollTop;
+		scrollL = dc.body.scrollLeft;
+	} else if (document.compatMode == "CSS1Compat") {
+		clientH = dc.documentElement.clientHeight;
+		clientW = dc.documentElement.clientWidth;
+		scrollH = dc.documentElement.scrollHeight;
+		scrollW = dc.documentElement.scrollWidth;
+		scrollT = dc.body.scrollTop || document.documentElement.scrollTop;
+		scrollL = dc.body.scrollLeft || document.documentElement.scrollLeft;
+	}
+	return {
+		cH: clientH,
+		cW: clientW,
+		sH: scrollH,
+		sW: scrollW,
+		sT: scrollT,
+		sL: scrollL
+	};
+}
+endsnippet
+
+snippet ie6cache
+/*
+*针对ie6背景图片缓存
+*/
+try{
+	var userAgent = navigator.userAgent.toLowerCase(),
+	env = null,
+	ver = 0;
+
+	env = userAgent.match(/msie ([\d.]+)/);ver = env ? parseInt(env[1], 10) : 0;
+	if(ver == 6){
+		try{ 
+			document.execCommand("BackgroundImageCache", false, true);
+		}catch(ex){}
+	}
+}catch(ex){}
+endsnippet
+
+snippet jsstope
+/**
+* 停止事件冒泡
+* @id stopEvent
+* @param {Object} Event对象
+*/
+function stopEvent(event) {
+	event = window.event || event;
+	if (event.stopPropagation) {
+		event.stopPropagation();
+	} else {
+		event.cancelBubble = true;
+	}
+}
+endsnippet
+
+snippet jsgetreq
+function getRequest(){
+	var url = location.search; //获取url中"?"符后的字串
+	var theRequest = new Object();
+	if (url.indexOf("?") != -1) {
+		var str = url.substr(1);
+		strs = str.split("&");
+		for(var i = 0; i < strs.length; i ++) {
+			theRequest[strs[i].split("=")[0]]=strs[i].split("=")[1];
+		}
+	}
+	return theRequest;
+}
+endsnippet
+
+snippet jsstopb
+//非默认
+if(e.stopPropagation){
+	e.stopPropagation();
+} else{
+	e.cancelBubble = true;
+}
+//默认
+if(e.preventDefault){
+	e.preventDefault();
+}else{
+	e.returnValue = false;
+}
+endsnippet
+
+snippet jsfloat
+//侧栏浮动
+function initSideFloat(){
+	var dc = document,
+	//距离底部的高度
+	bottomDistance = 100,
+	isIE6 = (function(){
+		if(window.XMLHttpRequest){
+			return false;
+		}else{
+			return true;
+		}
+	})(),
+	sidefloat = dc.createElement("div");
+	sidefloat.className = "side_float";
+	sidefloat.innerHTML = [
+		'<a href="javascript:;" class="s1" title="">回到顶部</a>',
+		'<a href="http://www.kugou.com/kf/user/app/" target="_blank" class="s2" title="意见反馈">意见反馈</a>'
+	].join("");
+		dc.body.appendChild(sidefloat);
+		if(isIE6){
+			sidefloat.style.bottom = "auto";
+			fixHandle();
+			window.onscroll = function(){
+				fixHandle();
+			};
+			window.onresize = function(){
+				fixHandle();
+			};
+			function fixHandle(){
+				sidefloat.style.top = (dc.body.scrollTop||dc.documentElement.scrollTop) + dc.documentElement.clientHeight - bottomDistance + "px";
+			}
+		} else{
+			sidefloat.style.bottom = bottomDistance + "px";
+		}
+		//回到顶部
+		function scrollToTop(){
+			var scrollTop = dc.documentElement.scrollTop || dc.body.scrollTop;
+			var iSpeed = Math.floor((-scrollTop)/2);
+			if(scrollTop <= 0){
+				return;
+			}
+			document.documentElement.scrollTop = document.body.scrollTop = scrollTop + iSpeed;
+			setTimeout(arguments.callee,50);
+		}
+		//绑定事件
+		sidefloat.children[0].onclick = scrollToTop;
+}
+endsnippet
+
+snippet jsweixin
+/*微信分享*/
+var dataForWeixin = {
+	appId: "",
+	msgImg: "",
+	url: location.href,
+	title: document.title,
+	desc: "",
+	fakeid: "",
+	callback: function() {}
+};
+(function() {
+	var onBridgeReady = function() {
+		/*发送给好友*/
+		WeixinJSBridge.on('menu:share:appmessage', function(argv) {
+			WeixinJSBridge.invoke('sendAppMessage', {
+				"appid": dataForWeixin.appId,
+				"img_url": dataForWeixin.msgImg,
+				"img_width": "120",
+				"img_height": "120",
+				"link": dataForWeixin.url,
+				"desc": dataForWeixin.desc,
+				"title": dataForWeixin.title
+			},
+			function(res) { 
+				(dataForWeixin.callback)();
+			});
+		});
+		/*分享到朋友圈*/
+		WeixinJSBridge.on('menu:share:timeline', function(argv) {
+			WeixinJSBridge.invoke('shareTimeline', {
+				"img_url": dataForWeixin.msgImg,
+				"img_width": "400",
+				"img_height": "400",
+				"link": dataForWeixin.url,
+				"desc": dataForWeixin.desc,
+				"title": dataForWeixin.desc
+			},
+			function(res) { 
+				(dataForWeixin.callback)();
+			});
+		});
+	};
+	// 当微信内置浏览器完成内部初始化后会触发WeixinJSBridgeReady事件。
+	if (document.addEventListener) {
+		document.addEventListener('WeixinJSBridgeReady', onBridgeReady, false);
+	} else if (document.attachEvent) {
+		document.attachEvent('WeixinJSBridgeReady', onBridgeReady);
+		document.attachEvent('onWeixinJSBridgeReady', onBridgeReady);
+	}
+})();
+endsnippet
+
+snippet jsaudiobind
+audio.addEventListener("loadstart", function(){});
+audio.addEventListener("durationchange", function(){});
+audio.addEventListener("loadedmetadata", function(){});
+audio.addEventListener("loadeddata", function(){});
+audio.addEventListener("progress", function(){});
+audio.addEventListener("canplay", function(){});
+audio.addEventListener("canplaythrough", function(){});
+endsnippet
+
+snippet jsvideobind
+video.addEventListener("loadstart", function(){});
+video.addEventListener("durationchange", function(){});
+video.addEventListener("loadedmetadata", function(){});
+video.addEventListener("loadeddata", function(){});
+video.addEventListener("progress", function(){});
+video.addEventListener("canplay", function(){});
+video.addEventListener("canplaythrough", function(){});
+endsnippet
+
+snippet jsopenapp
+(function() {
+	var isInstalled = 0,
+	//0:未知， 1:安装，2：没安装
+	ua = navigator.userAgent;
+
+	var schemelAndroid = 'kugou://start.weixin',
+	schemelIOS = 'kugouurl://start.weixin',
+	downloadURL = "",
+	schemelUrl = "";
+
+	if (ua.match(/iPhone|iPod/)) {
+		schemelUrl = schemelIOS;
+		downloadURL = "itms-apps://itunes.apple.com/cn/app/ku-gou-yin-le/id472208016?mt=8";
+	} else if (ua.match(/Android/)) {
+		schemelUrl = schemelAndroid;
+		downloadURL = "http://downmobile.kugou.com/promote/package/download/channel=118";
+	} else if (ua.match(/iPad/)) {
+		schemelUrl = schemelIOS;
+		downloadURL = "itms-apps://itunes.apple.com/cn/app/ku-gou-yin-le/id472208016?mt=8";
+	}
+
+	//if (ua.indexOf('KGBrowser') >= 0) { }
+
+	document.getElementById("go_enter").addEventListener("click", function() {
+		if (isInstalled == 1) {
+			location = schemelUrl;
+		} else if (isInstalled == 2) {
+			!!downloadURL && (location.href = downloadURL);
+		} else {
+			if (ua.match(/Android/)) { // android
+				var iframe = document.createElement("iframe");
+				iframe.style.width = "1px";
+				iframe.style.height = "1px";
+				iframe.style.display = "none";
+				var start = new Date().valueOf();
+				iframe.src = schemelUrl;
+				// 执行打开动作
+				document.body.appendChild(iframe);
+				setTimeout(function() {
+					if (!document.webkitHidden) {
+						var end = new Date().valueOf();
+						if ((end-start) < 1550) {
+							// 打开失败进入这个异常处理
+							window.location.href = downloadURL;
+						}
+					}
+				}, 1500);
+
+			} else if (ua.match(/iPhone|iPad|iPod/)) { // IOS
+				var start = new Date().valueOf();
+				window.location.href = schemelUrl;
+				setTimeout(function() {
+					if (!document.webkitHidden) {
+						var end = new Date().valueOf();
+						if ((end-start) < 2000) {
+							window.location.href = downloadURL;
+						}
+					}
+				}, 1500);
+			}
+		}
+	}, false);
+})();
+endsnippet
+
+snippet jshttp
+var XMLHttp = null;
+if (window.XMLHttpRequest && !(window.ActiveXObject)) {
+	XMLHttp = new XMLHttpRequest();
+} else if (window.ActiveXObject) {
+	try {
+		XMLHttp = new ActiveXObject("Microsoft.XMLHTTP");
+	} catch(otherMSIE) {
+		try {
+			XMLHttp = new ActiveXObject("Msxml2.XMLHTTP");
+		} catch(NoSupport) {
+			XMLHttp = null;
+		}
+	}
+}
+XMLHttp.onreadystatechange = function(){};
+//XMLHttp.open("post", "http://cpm.sdn.kugou.com/default.html?id=211", true);
+XMLHttp.open("post", "http://192.168.19.243:1105/10.13.0.30/demo/log.php", true);
+XMLHttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+XMLHttp.send();
+endsnippet
+
+snippet jsbefore
+var color = window.getComputedStyle(
+	document.querySelector('.element'), ':before'
+).getPropertyValue('color')
+endsnippet
+
+snippet jspagescroll
+/*
+*页面滑动
+* params { Number } 滚动的高度
+* params { Number } 滚动条高度
+*/
+var popToTop = function(h,s){
+	var nav_t = 0,
+	nav_d = 30,  //速度
+	nav_c = h,  //高度
+	dc = document,
+	nac = dc.documentElement || dc.body,
+	popSc = function(t,b,c,d){
+		return (t == d) ? b + c : c * (-Math.pow(2, -10 * t/d) + 1) + b;
+	};
+
+	function down(){
+		if(nav_t < nav_d){
+			nav_t++;
+			nac.scrollTop = Math.ceil(popSc(nav_t,0,nav_c,nav_d)) + s;
+			setTimeout(down, 10);
+		}
+	}
+	down();
+};
+endsnippet
+
+snippet jsresize
+/**
+* 重置字体大小 
+*/
+(function() {
+	if ( !! navigator.userAgent.match(/AppleWebKit.*Mobile.*/)) {
+		var body_fontsize = document.body.currentStyle || document.defaultView.getComputedStyle(document.body, '');
+		if (body_fontsize && parseInt(body_fontsize, 10) == 8) {
+			setTimeout(function() {
+				var vw = window.innerWidth || document.documentElement.clientWidth,
+				fs = Math.ceil((vw * 16) / 480);
+				if (fs % 2 == 1) {
+					fs++;
+				}
+				try {
+					document.getElementsByTagName("html")[0].style.fontSize = fs + "px";
+					document.getElementsByTagName("body")[0].style.fontSize = fs + "px";
+				} catch(e) {}
+			},
+			1000);
+		}
+	}
+})();
+endsnippet
+
+#将图片换为base64
+snippet fsreadimg
+var setUploadImg = function(target, imgTarget){
+	// 检查是否支持FileReader对象
+	if (typeof FileReader != 'undefined') {
+		var dc = document,
+			acceptedTypes = {
+			'image/png': true,
+			'image/jpeg': true,
+			'image/gif': true
+		};
+		if (target.files[0].type && acceptedTypes[target.files[0].type] === true) {
+			/*使用文件api获取图片*/
+			var reader = new FileReader();
+			reader.onload = function (event) {
+				imgTarget.src = event.target.result;
+			};
+			reader.readAsDataURL(target.files[0]);
+		}else{
+			alert("图片格式不正确");
+		}
+	}
+};
+endsnippet
+
+snippet trigger
+var trigger = function(target, type){
+	var dc = document;
+	if(dc.createEvent){
+		var evt = dc.createEvent("HTMLEvents");
+		evt.initEvent(type, false, true);
+		target.dispatchEvent(evt);
+	} else if(dc.createEventObject){
+		target.fireEvent("on" + type);
+	}
+};
+endsnippet
+
+snippet regdomain
+var reg = /^http:\/\/.*?\//;
+endsnippet
+
+snippet getflash
+function getFlash(flashName) {
+	if (navigator.appName.indexOf("Microsoft") != -1) {
+		try{
+			return document[flashName];
+		}catch(e){
+			return window[flashName];
+		}
+	}else{
+		return document[flashName];
+	}
+}
+endsnippet
+
+snippet getflasever
+function getFlashVersion() {
+	var ver,
+		SF = "ShockwaveFlash";
+
+	// for NPAPI see: http://en.wikipedia.org/wiki/NPAPI
+	if (navigator.plugins && navigator.mimeTypes.length) {
+		ver = (navigator.plugins["Shockwave Flash"] || 0).description;
+	}
+	// for ActiveX see:	http://en.wikipedia.org/wiki/ActiveX
+	else if (win.ActiveXObject) {
+		try {
+			ver = new win.ActiveXObject(SF + "." + SF).GetVariable("$version");
+		} catch (ex) {
+			// S.log("getFlashVersion failed via ActiveXObject");
+			// nothing to do, just return undefined
+		}
+	}
+
+	// 插件没安装或有问题时，ver 为 undefined
+	if (!ver) {
+		return undefined;
+	}
+
+	// 插件安装正常时，ver 为 "Shockwave Flash 10.1 r53" or "WIN 10,1,53,64"
+	return getArrayVersion(ver);
+}
+endsnippet
+
+
+snippet stage
+/**
+* Stage {Class}
+* 一个canvas对应一个stage实例
+* @inherit {objectContainerClass }
+* @param {htmlCanvasElement} 
+*/
+var Stage = ObjectContainerClass.extend({
+	onRefresh : function(){},
+	addEventListener : function(type, func){
+		return this._super(type, func);
+	},
+	removeEventListener : function(type, func){
+		return this._super(type, func);
+	},
+	removeAllEventListener : function(type){
+		return this._super(type);
+	},
+	hasEventListener : function(type){
+		return this._super(type);
+	},
+	getContext : function(){
+		return this._super();
+	},
+	addChild : function(child){
+		return this._super(child);
+	},
+	addChildAt : function(child, index){
+		return this._super(child, index);
+	},
+	removeChild : function(child){
+		return this._super(child);
+	},
+	removeChildAt : function(child, index){
+		return this._super(child, index);
+	},
+	getChildAt : function(index){
+		return this._super(index);
+	},
+	getChildIndex : function(child, index){
+		return this._super(child, index);
+	},
+	contain : function(child){
+		return this._super(index);
+	},
+	dispathMouseEvent : function(type, x, y){
+		return this._super(type, x, y);
+	},
+	clearHoverChildren : function(){
+		return this._super();
+	},
+	render : function(){},
+	clear : function(x, y, w, h){},
+	start : function(){},
+	stop : function(){},
+	init : function(canvas, option){}
+});
+endsnippet
+
+snippet sprite
+/**
+* Sprite {Class}
+* @inherit {objectContainerClass }
+* @param {htmlCanvasElement} 
+* option {
+*	stage : 
+*	x : 
+*	y : 
+*	width : 
+*	height : 
+* }
+*/
+var Sprite = ObjectContainerClass.extend({
+	onRefresh : function(){},
+	addEventListener : function(type, func){
+		return this._super(type, func);
+	},
+	removeEventListener : function(type, func){
+		return this._super(type, func);
+	},
+	removeAllEventListener : function(type){
+		return this._super(type);
+	},
+	hasEventListener : function(type){
+		return this._super(type);
+	},
+	getContext : function(){
+		return this._super();
+	},
+	addChild : function(child){
+		return this._super(child);
+	},
+	addChildAt : function(child, index){
+		return this._super(child, index);
+	},
+	removeChild : function(child){
+		return this._super(child);
+	},
+	removeChildAt : function(child, index){
+		return this._super(child, index);
+	},
+	getChildAt : function(index){
+		return this._super(index);
+	},
+	getChildIndex : function(child, index){
+		return this._super(child, index);
+	},
+	contain : function(child){
+		return this._super(index);
+	},
+	dispathMouseEvent : function(type, x, y){
+		return this._super(type, x, y);
+	},
+	clearHoverChildren : function(){
+		return this._super();
+	},
+	render : function(){},
+	onDrag : function(x, y){},
+	onDrop : function(x, y){},
+	init : function(canvas, option){}
+});
+endsnippet
+
+snippet loadNum
+/**
+* @method loadNum 
+* @param { Number } from
+* @param { Number } to
+*/
+var ${1:percent} = 0;
+var ${2:loadNum} = function(from , to){
+	if(${4:$1} < to){
+		if(${5:$1} >= from){
+			${6:$1}++;
+		}
+		console.log(${7:$1});
+		${3:$2}(${8:$1} ,to);
+		if(${9:$1} >= 100){
+			//code
+		}
+	}
+};
+endsnippet
+
+snippet grunt
+module.exports = function(grunt) {
+	grunt.initConfig({
+		pkg: grunt.file.readJSON('package.json')
+	});
+
+	grunt.loadNpmTasks('grunt-cmd-transport');
+	grunt.loadNpmTasks('grunt-cmd');
+	grunt.loadNpmTasks('grunt-contrib-uglify');
+	grunt.loadNpmTasks('grunt-contrib-clean');
+
+	//grunt.registerTask('default', ['watch']);
+};
+endsnippet
+
+snippet jsdh
+window.requestAnimFrame = (function(){ 
+	return window.requestAnimationFrame || 
+		window.webkitRequestAnimationFrame || 
+		window.mozRequestAnimationFrame || 
+		window.oRequestAnimationFrame || 
+		window.msRequestAnimationFrame || 
+		function(callback) { 
+			window.setTimeout(callback, 1000 / 60); 
+		}; 
+})();
+endsnippet
+
+snippet jsorient
+window.addEventListener('orientationchange', function(event) { 
+	alert(window.orientation || screen.orientation) 
+}, false); 
+window.addEventListener('deviceorientation', function(event) { 
+	var a = event.alpha; 
+	var b = event.beta; 
+	var g = event.gamma; 
+	console.log([a, b, g]); 
+}, false); 
+window.addEventListener('compassneedscalibration', function(event) { 
+	alert('Your compass needs calibrating! Wave your device in a figure-eight motion'); 
+	event.preventDefault(); 
+}, false); 
+window.addEventListener('devicemotion', function(event) { 
+	// Process event.acceleration, event.accelerationIncludingGravity, 
+	// event.rotationRate and event.interval 
+}, false); 
+endsnippet
+
+snippet jsnet
+function updateConnectionClass() { 
+	var root = document.documentElement, 
+		types = "unknown ethernet wifi 2g 3g 4g none".split(" "); 
+	for (var i = 0, n = types.length; i < n; i++) { 
+		root.classList.remove("network-" + types[i]); 
+	} 
+	root.classList.add("network-" + navigator.connection.type); 
+} 
+window.onload = window.ononline = window.onoffline = updateConnectionClass;
+endsnippet
+
+snippet jsgeo
+if (navigator.geolocation) { 
+	navigator.geolocation.getCurrentPosition(function(position) { 
+		var latLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude); 
+		var marker = new google.maps.Marker({position: latLng, map: map}); 
+		map.setCenter(latLng); 
+	}, errorHandler); 
+} 
+endsnippet
+
+snippet jssetcss
+var setCss = function(){
+	var dc = document,
+	_style = dc.createElement('style'),
+	_css = '';
+
+	_style.type = "text/css";
+	_css = [''].join('');
+
+	//插入样式
+	dc.getElementsByTagName('head')[0].appendChild(_style);
+	if (_style.styleSheet) {
+		_style.styleSheet.cssText = css;
+	} else {
+		_style.innerHTML = css;
+	}
+};
+endsnippet
+
+snippet getiframe
+${1:iframeDom}.contentWindow.${2:func}
+endsnippet
+
+snippet getdomRect
+${1:document.body}.getBoundingClientRect().top
+endsnippet
+
+snippet jstosjon
+var json = new Function("return " + jsonStr)();
+var json = eval('(' + jsonStr + ')');
+endsnippet
+
+snippet jscookie
+document.cookie = "k7_misicLib_curSrc=" + location.href + ";path=/yueku/v8;domain=kugou.com;";
+endsnippet
+
+snippet jsregexec
+var strXml = "<author>jack<span>Ryu</span></author><author>jack</author>"; 
+var regExp = /<author>(.*?)<\/author>/gi; 
+//var result = strXml.match(regExp);
+while(result = regExp.exec(strXml)){
+	console.log(RegExp.$1);
+}
+endsnippet
+
+snippet jsopener
+try{
+	window.parent.opener.location.reload();
+	window.parent.close();
+}catch(ex){
+	//portal为要刷新父页面的地址
+	window.parent.opener.location = '${1:url}';
+	window.parent.opener = null;
+	window.parent.close();
+}
+endsnippet
+
+snippet jscreateevent
+var trigger = function(target, type) {
+	var dc = document;
+	if (dc.createEvent) {
+		var evt = dc.createEvent("HTMLEvents");
+		evt.initEvent(type, false, true);
+		target.dispatchEvent(evt);
+	} else if (dc.createEventObject) {
+		target.fireEvent("on" + type);
+	}
+};
+endsnippet
+
+snippet indeof
+Array.prototype.indexOf = Array.prototype.indexOf || function(s){
+	for(var i = 0, len = this.length; i < len; i++){
+		if(this[i] === s){
+			return i;
+		}
+	}
+	return -1;
+};
+Array.prototype.remove = function(item){
+	for(var i = 0; i < this.length;){
+		if(this[i] === item){
+			this.splice(i,1);
+		} else {
+			i++;
+		}
+	}
+	return this;
+};
+endsnippet
+
+snippet typeOf
+var oP = Object.prototype,
+toString = oP.toString;
+
+function typeOf(value) {
+	if (null === value) {
+		return 'null';
+	}
+
+	var type = typeof value;
+	if ('undefined' === type || 'string' === type) {
+		return type;
+	}
+
+	var typeString = toString.call(value);
+	switch (typeString) {
+		case '[object Array]':
+			return 'array';
+		case '[object Date]':
+			return 'date';
+		case '[object Boolean]':
+			return 'boolean';
+		case '[object Number]':
+			return 'number';
+		case '[object Function]':
+			return 'function';
+		case '[object RegExp]':
+			return 'regexp';
+		case '[object Object]':
+			if (undefined !== value.nodeType) {
+			if (3 == value.nodeType) {
+				return (/\S/).test(value.nodeValue) ? 'textnode': 'whitespace';
+			} else {
+				return 'element';
+			}
+		} else {
+			return 'object';
+		}
+		default:
+			return 'unknow';
+	}
+}
+endsnippet
+
+
+snippet drag
+var holder = document.getElementById('holder');
+
+holder.ondragover = function() {
+	return false;
+};
+holder.ondragend = function() {
+	return false;
+};
+holder.ondrop = function(event) {
+	event.preventDefault();
+
+	var file = event.dataTransfer.files[0];
+	var reader = new FileReader();
+
+	reader.onload = function(event) {
+		var binary = event.target.result;
+		var md5 = CryptoJS.MD5(binary).toString()
+			console.log(md5);
+	};
+
+	reader.readAsBinaryString(file);
+=======
+snippet getcls
+/**
+* 获取类名节点
+* @param { String } classname
+* @param { String | Object } 
+* @return { Array } els
+*/
+var getCls = function(cls, id){
+	var dc = document,
+	father_el,
+	els,
+	arr = [];
+
+	if(id){
+		if(Object.prototype.toString.call(id) === '[object String]'){
+			father_el = dc.getElementById(id);
+		}else if(Object.prototype.toString.call(id) === '[object Object]'){
+			father_el = id;
+		}
+	}
+
+	/*如果没有父节点，则使用页面*/
+	if(!father_el){
+		father_el = dc;
+	}
+
+	if(cls){
+		/*判断是否支持高级选择器*/
+		if(dc.getElementsByClassName && false){
+			els = father_el.getElementsByClassName(cls);
+			arr = els;
+		}
+
+		/*常用处理方法*/
+		else{
+			els = father_el.getElementsByTagName('*');
+			/*分别匹配*/
+			for (var i = 0, len = els.length; i < len; i++) {
+				if(new RegExp('\\b' + cls + '\\b').test(els[i].className)){
+					arr.push(els[i]);
+				}
+			}
+		}
+	}
+
+	return arr;
+};
+endsnippet
+
+snippet stopscroll
+if(navigator.userAgent.indexOf('firefox') > -1){
+	/*只有火狐没有whellDelta*/
+	document.getElementById("scroll").addEventListener('DOMMouseScroll',function(event){
+		/*console.log(event);*/
+		document.getElementById("scroll").scrollTop += event.detail > 0 ? 20 : -20;
+		event.preventDefault();
+	},false);
+}else{
+	document.getElementById("scroll").onmousewheel = function(event){
+		event = event || window.event;
+		/*console.log(event);*/
+		document.getElementById("scroll").scrollTop += event.wheelDelta > 0 ? -20 : 20;
+		event.returnValue = false;
+	};
+}
+endsnippet
+
+snippet webedit
+document.body.contentEditable='true';
+document.designMode='on';
+endsnippet
+
+snippet getUrlp
+/*获取url中的参数*/
+var getUrlParam = function(name) {
+	/*构造一个含有目标参数的正则表达式对象*/
+	var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"),
+	/*匹配目标参数*/
+	r = window.location.search.substr(1).match(reg);
+
+	/*返回参数值*/
+	if (r){
+		return unescape(r[2]);
+	}
+	return null;
+};
+endsnippet
+
+snippet hashchange
+if( ('onhashchange' in window) && ((typeof document.documentMode==='undefined') || document.documentMode==8)) {
+	// 浏览器支持onhashchange事件
+	// TODO，对应新的hash执行的操作函数
+	window.onhashchange = hashChangeFire;
+} else {
+	// 不支持则用定时器检测的办法
+	setInterval(function() {
+		// TODO，检测hash值或其中某一段是否更改的函数
+		var ischanged = isHashChanged();
+		if(ischanged) {
+		// TODO，对应新的hash执行的操作函数
+			hashChangeFire();
+		}
+	}, 150);
+}
+endsnippet
+
+snippet getcurrentscripit
+function getCurrentScript() {
+	//取得正在解析的script节点
+	if(DOC.currentScript) { //firefox 4+
+		return DOC.currentScript.src;
+	}
+
+	// 参考 https://github.com/samyk/jiagra/blob/master/jiagra.js
+	var stack;
+	try {
+		a.b.c(); //强制报错,以便捕获e.stack
+	} catch(e) {//safari的错误对象只有line,sourceId,sourceURL
+		stack = e.stack;
+		if(!stack && window.opera){
+			//opera 9没有e.stack,但有e.Backtrace,但不能直接取得,需要对e对象转字符串进行抽取
+			stack = (String(e).match(/of linked script \S+/g) || []).join(" ");
+		}
+	}
+
+	if(stack) {
+		/**e.stack最后一行在所有支持的浏览器大致如下:
+		*chrome23:
+		* at http://113.93.50.63/data.js:4:1
+		*firefox17:
+		*@http://113.93.50.63/query.js:4
+		*opera12:
+		*@http://113.93.50.63/data.js:4
+		*IE10:
+		*  at Global code (http://113.93.50.63/data.js:4:1)
+		*/
+		stack = stack.split( /[@ ]/g).pop();//取得最后一行,最后一个空格或@之后的部分
+		stack = stack[0] == "(" ? stack.slice(1,-1) : stack;
+		return stack.replace(/(:\d+)?:\d+$/i, "");//去掉行号与或许存在的出错字符起始位置
+	}
+
+	var nodes = head.getElementsByTagName("script"); //只在head标签中寻找
+	for(var i = 0, node; node = nodes[i++];) {
+		if(node.readyState === "interactive") {
+			return node.className = node.src;
+		}
+	}
+}
+endsnippet
+
+snippet fixedh5
+var dpr, rem, scale;
+var docEl = document.documentElement;
+var fontEl = document.createElement('style');
+var metaEl = document.querySelector('meta[name="viewport"]');
+
+dpr = window.devicePixelRatio || 1;
+rem = docEl.clientWidth * dpr / 10;
+scale = 1 / dpr;
+
+/*设置viewport，进行缩放，达到高清效果*/
+metaEl.setAttribute('content', 'width=' + dpr * docEl.clientWidth + ',initial-scale=' + scale + ',maximum-scale=' + scale + ', minimum-scale=' + scale + ',user-scalable=no');
+
+/*设置data-dpr属性，留作的css hack之用*/
+docEl.setAttribute('data-dpr', dpr);
+
+/*动态写入样式*/
+docEl.firstElementChild.appendChild(fontEl);
+fontEl.innerHTML = 'html{font-size:' + rem + 'px!important;}';
+
+/*给js调用的，某一dpr下rem和px之间的转换函数*/
+window.rem2px = function(v) {
+	v = parseFloat(v);
+	return v * rem;
+};
+window.px2rem = function(v) {
+	v = parseFloat(v);
+	return v / rem;
+};
+
+window.dpr = dpr;
+window.rem = rem;
+endsnippet
+
+snippet uses "开启严格模式"
+'use strict';
+endsnippet
+
+#证读取任意文件转换为base64
+snippet fsread
+/*通过文件读取*/
+var reader = new FileReader();
+reader.onload = function(e){
+	console.log(e.target.result);
+};
+reader.readAsDataURL(file);  
+endsnippet
+
+
+# CANVAS API S
+# https://segmentfault.com/a/1190000007792150
+
+snippet ctx
+var ${1:id} = document.getElementById('$1');
+var ${2:ctx} = $1.getContext('2d');
+endsnippet
+
+snippet ctxdi
+${1:ctx}.drawImage(${2:img}, ${3:sX}, ${4:sY}, ${5:sW}, ${6:sH}, ${7:dX}, ${8:dY}, ${9:dW}, ${10:dH});
+endsnippet
+
+snippet ctxclear
+${1:ctx}.clearRect(${2:x}, ${3:y}, ${4:canvas.width}, ${5:canavs.height});
+endsnippet
+
+# 四边形
+snippet ctxrect "四边形"
+ctx.beginPath();
+ctx.rect(${1:x}, ${2:y}, ${3:w}, ${4:h});
+ctx.strokeStyle = "green";
+ctx.fill();
+// 或者使用两者的结合属性
+// ctx.fillRect($1, $2, $3, $4);
+// 定义线宽
+ctx.lineWidth = 5;
+ctx.strokeRect(10, 10, 100, 100);
+ctx.stroke();
+endsnippet
+
+# 画圆
+snippet ctxarc "画圆"
+ctx.beginPath();
+// radius 半径
+// startAngle 是从 x 轴正方向，顺时针计算角度，弧度值
+// anticlockwise，false为顺时针
+// 默认为逆时针
+${1:ctx}.arc(${2:x}, ${3:y}, ${4:radius}, ${5:startAngle}, ${6:endAngle|(deg * Math.PI) / 180}, ${7:anticlockwise});
+ctx.closePath();
+ctx.lineWidth = 5;
+ctx.fillStyle = 'red';
+ctx.fill();
+ctx.strokeStyle = '#550000';
+ctx.stroke();
+endsnippet
+
+
+# 画圆
+snippet ctxellipse "画圆新APi"
+ctx.beginPath();
+// x,y 确定长轴，短轴的位置
+// rotation 按照 x 轴正方向，按照 anticlockwise 的设置进行旋转，也是弧度制
+// startAngle，endAngle 也是按照 x 轴正方向来的
+ctx.ellipse(${1:x}, ${2:y}, ${3:radiusX}, ${4:radiusY}, ${5:rotation}, ${6:startAngle}, ${7:endAngle}, ${8:anticlockwise});
+ctx.stroke();
+endsnippet
+
+# 画线
+snippet ctxline "画线"
+// 开始画线,里面没有任何参数
+ctx.beginPath();
+// 定义起始点
+ctx.moveTo(x,y);
+// 定义过程点
+ctx.lineTo(x,y);
+// 还可以定义线宽, 单位默认为 px
+ctx.lineWidth = 20;
+// 定义线两端的格式，该属性有 3 个取值：butt，round，square
+ctx.lineCap = 'butt';
+// 用来描述，多个路径之间的连接方式。基本取值有：round,bevel,miter
+ctx.lineJoin = 'miter';
+// 线的颜色
+ctx.strokeStyle = "#fff";
+// 开始划线,里面没任何参数
+ctx.stroke();
+endsnippet
+
+# Quadratic Curve
+# 该是用来画二次曲线的：
+snippet ctxqct "二次曲线"
+ctx.beginPath();
+// x 轴上的点 (50, 20)
+ctx.moveTo(50, 20);
+// 控制点为 (230, 30)
+// 另外 x 轴上的点为 (50, 100)
+// ctx.quadraticCurveTo(cpx, cpy, x, y);
+ctx.quadraticCurveTo(230, 30, 50, 100);
+ctx.stroke();
+endsnippet
+
+# 贝塞尔曲线
+snippet ctxbct "贝塞尔曲线"
+ctx.beginPath();
+ctx.moveTo(50,20);
+// 这里定义了两个控制点，一个基准点
+ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
+ctx.closePath();
+ctx.stroke();
+endsnippet
+
+# 填充颜色
+snippet ctxfillstyle "基本颜色填充，渐变填充，图片填充"
+// 填充基本颜色值，比如 #fff
+ctx.fillStyle = ${1:color};
+// 填充渐变值，比如 createLinear 创建的渐变等
+ctx.fillStyle = ${2:gradient};
+// 通常用来贴图用的值
+ctx.fillStyle = ${3:pattern};
+endsnippet
+
+# 线性渐变色填充
+snippet ctxlinear "线性渐变色填充"
+// ctx.createLinearGradient(x0, y0, x1, y1);
+var gradient = ctx.createLinearGradient(0, 0, 200, 0);
+// offset: 为 [0,1] 之间的数
+// color: rgb 的值
+gradient.addColorStop(0, 'green');
+gradient.addColorStop(1, 'white');
+ctx.fillStyle = gradient;
+ctx.fillRect(10, 10, 200, 100);
+endsnippet
+
+# 中心渐变
+snippet ctxradial "中心渐变"
+// ctx.createRadialGradient(x0, y0, r0, x1, y1, r1);
+let gradient = ctx.createRadialGradient(200, 200, 0, 200, 200, 160);
+gradient.addColorStop(0, 'red');
+gradient.addColorStop(1, 'white');
+ctx.fillStyle = gradient;
+ctx.arc(200, 200, 160, 0, 2 * Math.PI);
+ctx.fill();
+endsnippet
+
+# 贴图
+snippet ctxpattern "贴图"
+// image: 该类型的取值有很多，比如 <img/>, <video/>, <cavnas/>, CanvasRenderingContext2D, ImageBitmap, ImageData, Blob 等。
+// repetition：repeat, repeat-x, repeat-y, no-repeat.
+// ctx.createPattern(image, 'repetition');
+// FROM MDN
+var img = new Image();
+img.onload = function() {
+	var pattern = ctx.createPattern(img, 'repeat');
+	ctx.fillStyle = pattern;
+	ctx.fillRect(0,0,400,400);
+};
+img.src = 'http://www.imiku.com/lib/tpl/dokuwiki/images/logo.png';
+endsnippet
+
+
+# 图片处理
+snippet ctxdrawimage "图片处理"
+// 简单绘制
+ctx.drawImage(image, dx, dy);
+// 缩放绘制 dWidth 和 dHeight 来确定在 canvas 中绘制的大小，可以放大和缩小。
+ctx.drawImage(image, dx, dy, dWidth, dHeight);
+// 裁剪绘制 sx, sy, sWidth, sHeight 用来确定在原来图片上，截取图像的区域。
+ctx.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+endsnippet
+
+# 字体处理
+snippet ctxfont "字体处理"
+// font 的值 一般的 css font 属性的值。默认为： 10px sans-serif
+ctx.font = 'italic 40pt Calibri';
+// 字体排序，默认为 start
+ctx.textAlign = "left" || "right" || "center" || "start" || "end";
+// 基线位置，默认值为 ideographic
+ctx.textBaseline = "top" || "hanging" || "middle" || "alphabetic" || "ideographic" || "bottom";
+// x, y text 左下角
+// 字体边框粗细
+ctx.lineWidth = 5;
+ctx.fillText('Hello World!', 150, 100);
+// x,y 用来确定 text 的左下角起始点。很重要，是左下角！
+// maxWidth: 用来确定 text 渲染的宽度，如果字体大了，则会自动缩小，不会换行。
+ctx.strokeText(text, x, y [, maxWidth]);
+endsnippet
+
+snippet ctxfontface "定义字体文件"
+// 使用比较新的 API FontFace() 来使用在线字体：
+var f = new FontFace('font-name', 'url(x)');
+f.load().then(function() {
+	ctx.font='20px font-name';
+	ctx.fillText('ABC', 100, 100);
+});
+endsnippet
+
+# 测量字体
+snippet ctxmeasure "测量字体"
+var text = ctx.measureText('${1: foo}');
+console.log(text.width);
+endsnippet
+
+# 原点平移变化
+snippet ctxtranslate "坐标系平移变化"
+// x：当前坐标系在 x 轴向的移动方向
+// y：当前坐标在 y 轴向的移动方向
+ctx.translate(x, y);
+// 2D 变换矩阵，这和 transform 属性一样。
+ctx.setTransform(1, 0, 0, 1, x, y);
+endsnippet
+
+# 旋转坐标系
+snippet ctxrotate "坐标系旋转"
+// 里面的参数是弧度，可以使用 Math.PI 来进行转换
+ctx.rotate(${1:angle});
+// ctx.fillRect(70, 0, 100, 30);
+endsnippet
+
+# 缩放坐标系
+snippet ctxscale "坐标系缩放"
+// x：将 x 轴放大/缩小 x 倍。即，设置的像素值会乘以该 x 值.
+// y：将 y 轴放大/缩小 y 倍。即，设置的像素值会乘以该 y 值.
+ctx.scale(${1:x}, ${2:y});
+// 它对应于矩阵的表达就是：
+// setTransform(A, 0, 0, B, 0, 0);
+// ctx.scale(10, 3);
+// ctx.fillRect(10,10,10,10);
+// 最后的结果就是，在 (100,30) 点，画出 width: 100,height: 30 的矩形。
+endsnippet
+
+# 阴影特效
+snippet ctxshadow "阴影特效"
+// 阴影，默认为 0
+ctx.shadowBlur = 0;
+// color 默认为 black
+ctx.shadowColor = 'black';
+// 默认值为 0，相当于取 canvas 上的像素值
+// 可以为负值，但不能取 Infinity or NaN
+ctx.shadowOffsetX = 0;
+ctx.shadowOffsetY = 0;
+endsnippet
+
+# 设置透明度
+snippet ctxalpha "设置透明度"
+// value 为 [0.0,1.0] 
+// 默认值为 0.0，表示透明
+ctx.globalAlpha = 0.5;
+endsnippet
+
+# 裁剪效果
+snippet ctxclip "裁剪效果"
+// 最常用
+void ctx.clip();
+// fillRule 主要有两种，一种是 nonzero，一种是 even-odd
+// 默认的算法是 nonzero
+void ctx.clip(${1:fillRule});
+// 这里就是将需要画的路径，当参数传到 clip 里
+void ctx.clip(${2:path}, ${3:fillRule});
+endsnippet
+
+# 两个重叠图层绘制
+snippet ctxco "两个重叠图层绘制"
+// 两个重叠图层绘制的效果
+// https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Compositing/Example
+globalCompositeOperation = type
+endsnippet
+
+# 图像处理，创建
+snippet ctximagecreate "图像处理 createImageData"
+// width/height：用来设置当前 imgObj 的大小。
+// ImageData ctx.createImageData(width, height);
+// imagedata：获得一个已知 imgObj 的大小，注意这里不是复制，只是 copy imagedata 的 width/height。
+// ImageData ctx.createImageData(imagedata);
+// 用来手动创建一个空图片内容，默认的像素都是透明的黑色
+var ${1:imageData} = ctx.createImageData(${2:width}, ${3:height}, ${4:imagedata});
+endsnippet
+
+# 图像处理，取色
+snippet ctximageget "图像处理 getImageData"
+// x,y 用来指定截取像素的起始点
+// widht/height 用来指定截取像素点的宽/高
+var imageData = ctx.getImageData(${1:x}, ${2:y}, ${3:width}, ${4:height});
+endsnippet
+
+# 图像处理，着色
+snippet ctximageput "图像处理 putImageData"
+// dx/y 代表在 canvas 上绘制的绘制, margin
+// startX/Y 表示相对于图片其实的位置, padding共享宽高
+// width/height 表示获取的宽/高
+ctx.putImageData(imagedata, dx, dy);
+ctx.putImageData(imagedata, dx, dy, startX, startY, width, height);
+endsnippet
+
+# 生成URI
+snippet ctxuri "canvas 生成URI"
+// type: 用来设置导出图片类型，默认为：image/png。可选值有：image/jpeg，image/webp（chrome支持）。
+// encoderOptions[Number]：用来设置压缩比。只针对于 image/jpeg or webp 有用。通常取值为 0-1。默认值为 0.92。
+var uri = document.getElementById('${1:canvasId}').toDataURL(${2:type}, ${3:encoderOptions});
+endsnippet
+
+snippet ctxpoint "画点"
+// 实际还是1px画圆
+ctx.beginPath();
+ctx.arc(10, 10, 1, 0, 2 * Math.PI, true);
+ctx.fillStyle = 'red';
+ctx.fill();
+endsnippet
+
+# CANVAS API E
+
+snippet amd "amd defined"
+(function(window, undefined) {
+	"use strict";
+
+	// code
+
+	if (typeof define === 'function' && define.amd) {
+		define(function() {
+			return ${1:ZeroClipboard};
+		});
+	} else if (typeof module === 'object' && module && typeof module.exports === 'object' && module.exports) {
+		module.exports = $1;
+	} else {
+		window.$1 = $1;
+	}
+
+})(function() {
+	return this || window;
+}());
+endsnippet
+
+snippet isIE "IE浏览器判断"
+var isIE = (!!window.ActiveXObject) || (!!navigator.userAgent.match(/Trident.*rv\:11\./));
+endsnippet

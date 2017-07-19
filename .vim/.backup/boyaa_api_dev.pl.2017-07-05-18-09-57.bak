@@ -1,0 +1,126 @@
+#!/usr/bin/perl -w
+use utf8;
+use Mojo::UserAgent;
+use JSON::XS;
+use Data::Dumper;
+use File::Slurp;
+use Encode qw/encode_utf8 decode_utf8/;
+use Getopt::Long;
+use Digest::MD5 qw(md5 md5_hex md5_base64);
+use Data::Types qw(:all);
+use Scalar::Util qw(reftype);
+
+
+sub makeRandomString{
+    my $strlen = shift;
+    my @ds = ();
+    push(@ds, ('a'..'z'));
+    push(@ds, ('0'..'9'));
+    my $rs = "";
+    for (my $i = 1; $i <= $strlen; $i++) {
+        $rs .= $ds[int(rand($#ds + 1))];
+    }
+    return $rs;
+}
+
+sub makeJoins{
+    my ($data, $mtkey, $api) = @_;
+    my $str = "L";
+    if(reftype($data) eq "SCALAR"){
+        if(is_string($data) || is_int($data)){
+            $data =~ tr/a-zA-Z0-9//dc;
+            $str .= "T".$mtkey.$data;
+        }
+    }elseif(reftype($data) eq "REF"){
+
+    }else{}
+    if(is_string($data) || is_int($data)){
+        $data =~ tr/a-zA-Z0-9//dc;
+        $str .= "T".$mtkey.$data;
+    }else{
+        sort {$a <=> $b} (keys %{$data});
+        foreach $key (keys %{$data}){
+            print $key;
+            print "--";
+            print reftype(\${$data}{$key});
+            print "\n";
+            #$str .= $key."=".makeJoins(%{$data}{$key}, $mtkey, $api);
+        }
+    }
+    exit();
+    return $str;
+}
+
+sub makePostData{
+    my %data = @_;
+    $data{'vkey'} = makeRandomString(32);
+    $data{'mtkey'} = makeRandomString(32);
+    #foreach $key (keys %data){
+    #    my $val = $data{$key};
+    #    print("$key=$val\n"); 
+    #}
+    my $ua  = Mojo::UserAgent->new;
+    my $url = 'http://vm.boyaa.com/texas/api/api.php';
+    #print Dumper %data;
+    #sort {$a <=> $b} (keys %data);
+    my $_mtkey = $data{"mtkey"};
+    #my $_sigc = "Z";
+    #my $_param = $data{"param"};
+    #my $_method = $data{"method"};
+    #my $_check_str = $_sigc;
+    delete $data{"_unset"};
+    delete $data{"rsid"};
+    delete $data{"sig"};
+    delete $data{"mbsid"};
+    #print \%data;
+    my $_api = 117;
+    $str = makeJoins(\%data, $_mtkey, $_api);
+    $sig = md5_hex($str);
+    $data{"sig"} = $sig;
+    print Dumper \%data;
+    print "---------";
+    print $str;
+    #exit();
+    my $res = $ua->post(
+          $url => form => { api => encode_json(\%data)}
+    )->result;
+    if($res->is_success){
+        print Dumper($res->body);
+        #print(decode_utf8($res->body));
+    } 
+    if($res->is_error){
+        print($res->message);
+    }
+}
+
+
+my ($datatype, $file, $apitype);
+
+GetOptions ("datatype=s" => \$datatype,
+            "file=s"   => \$file,
+            "apitype=s" => \$apitype,
+)or die("error in command line arguments\n");
+
+if(!$datatype || ($datatype ne "file" && $datatype ne "json")){
+    die("please input param: -datatype=file|json ")
+}
+
+if(!$apitype || ($apitype ne "pc" && $apitype ne "mb")){
+    die("please input param: -apitype=pc|mb ")
+}
+
+if($datatype eq "file"){
+    if(!$file){
+        die("please input param: -file=?, example: file=./demo.txt ")
+    }
+    if(-e $file){
+        my $fileContent = read_file('demo.txt') ;
+        $fileContent =~ s/[\s?]+//g;
+        my %fileData = %{decode_json($fileContent)};
+        makePostData(%fileData);
+        #print makeRandomString(32);
+    }else{
+        die("error: file $file not found!")
+    }
+}
+

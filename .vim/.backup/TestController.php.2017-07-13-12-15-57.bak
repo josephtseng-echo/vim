@@ -1,0 +1,17 @@
+<?php
+/**
+ * Short description for TestController.php
+ *
+ * @package TestController
+ * @author josephzeng <josephzeng36@gmail.com>
+ * @version 0.1
+ * @copyright (C) 2017 josephzeng <josephzeng36@gmail.com>
+ * @license MIT
+ */
+
+namespace AppBundle\Controller;
+
+
+class TestController{
+
+}

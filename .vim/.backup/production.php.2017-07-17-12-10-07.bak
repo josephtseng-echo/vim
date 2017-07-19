@@ -1,0 +1,38 @@
+<?php
+/**
+ * Short description for dev.php
+ *
+ * @package dev
+ * @author josephzeng <josephzeng36@gmail.com>
+ * @version 0.1
+ * @copyright (C) 2017 josephzeng <josephzeng36@gmail.com>
+ * @license MIT
+ */
+
+$app["debug"] = true;
+//db
+$app["db.options"] = array (
+    "default" => array(
+        "driver" => "pdo_mysql",
+        "user" => "root",
+        "password" => "123456",
+        "dbname" => "mysql",
+        "host" => "localhost",
+        "charset"   => "utf8"
+    )
+);
+//redis
+$app['predis.clients'] = [
+    'client1' => 'tcp://127.0.0.1:6379',
+        'client2' => [
+            'host' => '127.0.0.1',
+            'port' => 6380,
+        ],
+        'client3' => [
+            'parameters' => 'tcp://127.0.0.1:6381',
+            'options' => [
+                'profile' => 'dev',
+                'prefix'  => 'silex:',
+            ],
+        ],
+];

@@ -1,0 +1,30 @@
+<?php
+/**
+ * Short description for app.php
+ *
+ * @package app
+ * @author josephzeng <josephzeng36@gmail.com>
+ * @version 0.1
+ * @copyright (C) 2017 josephzeng <josephzeng36@gmail.com>
+ * @license MIT
+ */
+
+use Silex\Application;
+use Silex\Provider\HttpCacheServiceProvider;
+use Silex\Provider\MonologServiceProvider;
+use Silex\Provider\ServiceControllerServiceProvider;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Request;
+
+
+
+if(ENVIRONMENT_INI == 'production'){
+    require ROOT_PATH.'/app/config/production.php';
+}
+$app->register(new ServiceControllerServiceProvider());
+
+require __DIR__.'/config/services.php';
+require __DIR__.'/config/routes.php';
+var_dump($app);
+

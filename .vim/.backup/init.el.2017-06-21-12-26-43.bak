@@ -1,0 +1,22 @@
+(add-to-list 'load-path (expand-file-name "config" user-emacs-directory))
+
+(defconst my-emacs-path "~/.emacs.d/" "my emacs config file path")
+(defconst my-emacs-vendor-lisps-path (concat my-emacs-path "site-lisp/") "the vendor lisp package")
+
+(defconst *spell-check-support-enabled* nil)
+(defconst *is-a-mac* (eq system-type 'darwin))
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+
+
+
+(require 'init-utils)
+(my-add-subdirs-to-load-path my-emacs-vendor-lisps-path)
+
+(require 'init-elpa)
+(require 'init-base)
+(require 'init-plugins)
+(require 'init-themes)
+(require 'init-org)
+(require 'init-shortcuts)
+(require 'init-calendar)
+(provide 'init)

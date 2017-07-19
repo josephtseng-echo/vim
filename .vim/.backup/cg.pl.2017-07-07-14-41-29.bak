@@ -1,0 +1,24 @@
+#! /usr/bin/env perl
+#
+# Short description for cg.pl
+#
+# Author josephzeng <josephzeng36@gmail.com>
+# Version 0.1
+# Copyright (C) 2017 josephzeng <josephzeng36@gmail.com>
+# Modified On 2017-07-07 14:38
+# Created  2017-07-07 14:38
+#
+use strict;
+use warnings;
+
+use AnyEvent;
+use AnyEvent::Handle;
+
+my $cv = AnyEvent->condvar;
+
+my $hdl; $hdl = new AnyEvent::Handle->new();
+
+$cv->recv;
+
+
+
