@@ -1,5 +1,5 @@
 # vim8.0
-## 使用
+## use before todo
 ```
 //linux
 # cd ~
@@ -9,5 +9,6 @@
 # ./install.py --clang-completer
 @done
 
-可以开始使用
+
+please use now !
 ```
