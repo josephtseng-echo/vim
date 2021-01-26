@@ -1,3 +1,0 @@
-(package-initialize)
-
-(load "~/.emacs.d/init.el")
