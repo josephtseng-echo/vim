@@ -1,0 +1,10 @@
+* env
+  vim --version >= 8.0
+* use
+#+begin_src bash
+  #linux
+  ~ cd ~
+  ~ git clone https://github.com/josephzeng36/vim.git
+  ~ vim
+  ~ :PlugInstall
+#+end_src
